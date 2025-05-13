@@ -1,0 +1,67 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../components/navigation/nav_bar.dart';
+import '../components/common/loading_spinner.dart';
+import '../components/auth/login_page.dart';
+import '../components/workspace/workspace_layout.dart';
+import 'state/auth_provider.dart';
+import 'state/project_provider.dart';
+
+class App extends StatefulWidget {
+  const App({Key? key}) : super(key: key);
+
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  bool isControlPanelOpen = false;
+
+  void handleToggleControlPanel() {
+    setState(() {
+      isControlPanelOpen = !isControlPanelOpen;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => ProjectProvider()),
+        ],
+        child: Builder(
+          builder: (context) {
+            final auth = Provider.of<AuthProvider>(context);
+            final project = Provider.of<ProjectProvider>(context);
+            if (auth.isLoading) {
+              return const Scaffold(
+                body: Center(child: LoadingSpinner(message: 'Authenticating...')),
+              );
+            }
+            return Scaffold(
+              appBar: auth.isAuthenticated
+                  ? PreferredSize(
+                      preferredSize: const Size.fromHeight(56.0),
+                      child: NavBar(onToggleControlPanel: handleToggleControlPanel),
+                    )
+                  : null,
+              body: Center(
+                child: auth.isAuthenticated
+                    ? WorkspaceLayout(
+                        projectName: project.currentProject?.name ?? '',
+                        wsStatus: project.projectConnectionStatus.name,
+                        hasRootElement: false, // TODO: Bind to real UI definition state
+                      )
+                    : LoginPage(
+                        onLoginSuccess: () => auth.initializeAuth(),
+                      ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
