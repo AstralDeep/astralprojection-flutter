@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class StackLayoutWidget extends StatelessWidget {
   final Map<String, dynamic> primitive;
@@ -50,27 +51,65 @@ class ChatViewBasicWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = primitive['content'] as List<dynamic>? ?? [];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text('Chat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-        for (final msg in content)
-          if (msg is Map<String, dynamic>)
+    final config = primitive['config'] as Map<String, dynamic>? ?? {};
+    final title = config['title']?.toString() ?? primitive['id']?.toString() ?? '';
+    return Container(
+      margin: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(width: 8),
+              const Text('Chat', style: TextStyle(fontSize: 14, color: Colors.black54)),
+            ],
+          ),
+          const Divider(height: 24),
+          if (content.isEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
-              child: Align(
-                alignment: msg['role'] == 'user' ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: msg['role'] == 'user' ? Colors.blue[100] : Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Text('Conversation started.', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey[600])),
+            ),
+          for (final msg in content)
+            if (msg is Map<String, dynamic>)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+                child: Align(
+                  alignment: msg['role'] == 'user' ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    decoration: BoxDecoration(
+                      color: msg['role'] == 'user' ? Colors.blue[50] : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+                    child: Text(
+                      msg['text'] ?? '',
+                      style: TextStyle(
+                        color: msg['role'] == 'user' ? Colors.blue[900] : Colors.black87,
+                        fontSize: 15,
+                      ),
+                    ),
                   ),
-                  padding: const EdgeInsets.all(8),
-                  child: Text(msg['text'] ?? ''),
                 ),
               ),
-            ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -90,6 +129,15 @@ class _InputFieldWidgetState extends State<InputFieldWidget> {
     _controller = TextEditingController(text: widget.primitive['content'] ?? '');
   }
   @override
+  void didUpdateWidget(InputFieldWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update controller text if primitive content changes externally
+    final newText = widget.primitive['content'] ?? '';
+    if (_controller.text != newText) {
+      _controller.text = newText;
+    }
+  }
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -100,6 +148,9 @@ class _InputFieldWidgetState extends State<InputFieldWidget> {
           border: const OutlineInputBorder(),
         ),
         onChanged: (val) {
+          if (widget.onValueChange != null) widget.onValueChange!(val);
+        },
+        onSubmitted: (val) {
           if (widget.onValueChange != null) widget.onValueChange!(val);
         },
       ),
@@ -128,15 +179,37 @@ class LogViewWidget extends StatelessWidget {
   const LogViewWidget({required this.primitive, Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context) {
-    final content = primitive['content'] ?? '';
+    final content = primitive['content'];
+    List<dynamic> entries = [];
+    if (content is List) {
+      entries = content;
+    } else if (content != null) {
+      entries = [content];
+    }
     return Container(
-      margin: const EdgeInsets.all(8.0),
-      padding: const EdgeInsets.all(8.0),
+      margin: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.circular(8.0),
       ),
-      child: Text(content.toString(), style: const TextStyle(color: Colors.white)),
+      child: entries.isEmpty
+          ? Text('No log entries.', style: TextStyle(color: Colors.grey[400], fontStyle: FontStyle.italic))
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final entry in entries)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2.0),
+                    child: Text(
+                      entry is Map && entry.containsKey('message')
+                          ? entry['message'].toString()
+                          : entry.toString(),
+                      style: const TextStyle(color: Colors.white, fontFamily: 'monospace', fontSize: 13),
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 }
@@ -147,10 +220,93 @@ class MarkdownViewWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = primitive['content'] ?? '';
-    // For simplicity, use a basic Text widget. For full markdown, use flutter_markdown package.
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: Text(content.toString()),
+      child: MarkdownBody(data: content.toString()),
+    );
+  }
+}
+
+class StreamingTextViewWidget extends StatelessWidget {
+  final Map<String, dynamic> primitive;
+  const StreamingTextViewWidget({required this.primitive, Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) {
+    final content = primitive['content'] ?? '';
+    return Container(
+      margin: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: SelectableText(content.toString()),
+    );
+  }
+}
+
+class CodeViewWidget extends StatelessWidget {
+  final Map<String, dynamic> primitive;
+  const CodeViewWidget({required this.primitive, Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) {
+    final content = primitive['content'] ?? '';
+    return Container(
+      margin: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: SelectableText(
+        content.toString(),
+        style: const TextStyle(fontFamily: 'monospace', color: Colors.white),
+      ),
+    );
+  }
+}
+
+class HtmlViewWidget extends StatelessWidget {
+  final Map<String, dynamic> primitive;
+  const HtmlViewWidget({required this.primitive, Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) {
+    final content = primitive['content'];
+    // Basic rendering: show as string, table, or error. Expand as needed.
+    if (content is Map && content.containsKey('viz_type')) {
+      final vizType = content['viz_type'];
+      final vizContent = content['content'];
+      if (vizType == 'table' && vizContent is Map) {
+        final columns = vizContent['columns'] as List<dynamic>? ?? [];
+        final rows = vizContent['rows'] as List<dynamic>? ?? [];
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columns: columns.map((c) => DataColumn(label: Text(c.toString()))).toList(),
+            rows: rows.map((row) {
+              final cells = row as List<dynamic>? ?? [];
+              return DataRow(
+                cells: cells.map((cell) => DataCell(Text(cell?.toString() ?? ''))).toList(),
+              );
+            }).toList(),
+          ),
+        );
+      } else if (vizType == 'message' || vizType == 'scalar') {
+        return Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(vizContent?.toString() ?? ''),
+        );
+      } else if (vizType == 'error') {
+        return Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(vizContent?.toString() ?? '', style: const TextStyle(color: Colors.red)),
+        );
+      }
+    }
+    // Fallback: render as string
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Text(content?.toString() ?? ''),
     );
   }
 }
@@ -163,6 +319,9 @@ final Map<String, Widget Function(Map<String, dynamic> primitive, {void Function
   'Button': (primitive, {sendAction, onValueChange, onAction}) => ButtonWidget(primitive: primitive, onAction: onAction),
   'LogView': (primitive, {sendAction, onValueChange, onAction}) => LogViewWidget(primitive: primitive),
   'MarkdownView': (primitive, {sendAction, onValueChange, onAction}) => MarkdownViewWidget(primitive: primitive),
+  'StreamingTextView': (primitive, {sendAction, onValueChange, onAction}) => StreamingTextViewWidget(primitive: primitive),
+  'CodeView': (primitive, {sendAction, onValueChange, onAction}) => CodeViewWidget(primitive: primitive),
+  'HtmlView': (primitive, {sendAction, onValueChange, onAction}) => HtmlViewWidget(primitive: primitive),
 };
 
 class DynamicRenderer extends StatefulWidget {
@@ -189,7 +348,6 @@ class _DynamicRendererState extends State<DynamicRenderer> {
     final config = primitive['config'] as Map<String, dynamic>? ?? {};
     final valueSourceElementIds = config['valueSourceElementIds'] as List<dynamic>?;
     String argumentKey = 'value';
-    // Prefer explicit argumentKey from config or primitive
     if (config['argumentKey'] is String) {
       argumentKey = config['argumentKey'];
     } else if (primitive['argumentKey'] is String) {
@@ -197,7 +355,6 @@ class _DynamicRendererState extends State<DynamicRenderer> {
     } else if (valueSourceElementIds != null && valueSourceElementIds.isNotEmpty) {
       argumentKey = valueSourceElementIds.first.toString();
     }
-    // Fallback for common backend actions (e.g., chatbot_query expects 'query')
     if ((actionId == 'chatbot_query' || actionId == 'process_user_query' || actionId.toString().contains('query')) && argumentKey != 'query') {
       argumentKey = 'query';
     }
