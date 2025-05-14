@@ -4,6 +4,7 @@ import '../common/loading_spinner.dart';
 import '../dynamic_renderer.dart';
 import '../../state/project_provider.dart';
 import '../../state/auth_provider.dart';
+import '../../state/web_socket_provider.dart';
 import 'project_dropdown.dart';
 
 class WorkspaceLayout extends StatelessWidget {
@@ -22,8 +23,25 @@ class WorkspaceLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final projectProvider = Provider.of<ProjectProvider>(context); // listen: true (default)
+    final projectProvider = Provider.of<ProjectProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+    final wsProvider = Provider.of<WebSocketProvider>(context);
     final hasProject = projectProvider.currentProject != null;
+    final hasRootElement = wsProvider.uiState != null && wsProvider.uiState!['rootElement'] != null;
+
+    // WebSocket connection logic
+    if (hasProject && authProvider.token != null && !wsProvider.connected) {
+      // Use the correct backend WebSocket URL and query parameter
+      final wsUrl = 'ws://127.0.0.1:8000/api/ws/stream/mcp:${projectProvider.currentProject!.id}?token=${authProvider.token}';
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        wsProvider.connect(url: wsUrl);
+      });
+    }
+    if (!hasProject && wsProvider.connected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        wsProvider.disconnect();
+      });
+    }
 
     if (!hasProject) {
       // Debug: print current project and projects
@@ -92,17 +110,72 @@ class WorkspaceLayout extends StatelessWidget {
     }
 
     Widget content;
-    if (wsStatus == 'connecting' || wsStatus == 'reconnecting') {
-      content = LoadingSpinner(message: 'Connecting to ${projectName ?? 'project'}...');
-    } else if (wsStatus != 'connected') {
-      final errorText = wsStatus == 'error' ? (wsError ?? 'Connection error.') : 'Attempting to reconnect...';
-      content = Center(
-        child: Text('Disconnected. $errorText', style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
-      );
-    } else if (!hasRootElement) {
+    if (wsProvider.connected == false && hasProject) {
+      if (wsProvider.error != null) {
+        content = Center(
+          child: Text('WebSocket error: ${wsProvider.error}', style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.red)),
+        );
+      } else {
+        content = LoadingSpinner(message: 'Connecting to WebSocket...');
+      }
+    } else if (wsProvider.connected && !hasRootElement) {
       content = const LoadingSpinner(message: 'Waiting for UI definition from server...');
+    } else if (wsProvider.connected && hasRootElement) {
+      content = DynamicRenderer(
+        primitive: wsProvider.uiState!['rootElement'],
+        sendAction: (msg) {
+          wsProvider.send(msg);
+        },
+      );
     } else {
-      content = DynamicRenderer(primitive: {'type': 'StackLayout', 'id': 'root'});
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'AI Interface',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF4A5CF0),
+            ),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 1,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.settings, color: Colors.grey),
+              onPressed: () {},
+              tooltip: 'Settings',
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: CircleAvatar(
+                backgroundColor: Colors.grey.shade200,
+                child: const Text(
+                  'P',
+                  style: TextStyle(color: Colors.black),
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ProjectDropdown(),
+              const SizedBox(height: 32),
+              Text(
+                'Select a project to begin.',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontStyle: FontStyle.italic,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: const Color(0xFFF7F9FB),
+      );
     }
     return Container(
       padding: const EdgeInsets.all(10.0),

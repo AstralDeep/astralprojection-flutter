@@ -6,6 +6,7 @@ import '../components/auth/login_page.dart';
 import '../components/workspace/workspace_layout.dart';
 import 'state/auth_provider.dart';
 import 'state/project_provider.dart';
+import 'state/web_socket_provider.dart';
 
 class App extends StatefulWidget {
   const App({Key? key}) : super(key: key);
@@ -30,6 +31,7 @@ class _AppState extends State<App> {
         providers: [
           ChangeNotifierProvider(create: (_) => AuthProvider()),
           ChangeNotifierProvider(create: (_) => ProjectProvider()),
+          ChangeNotifierProvider(create: (_) => WebSocketProvider()),
         ],
         child: Builder(
           builder: (context) {
