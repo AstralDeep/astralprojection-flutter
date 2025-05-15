@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:provider/provider.dart';
+import '../state/web_socket_provider.dart';
 
 class StackLayoutWidget extends StatelessWidget {
   final Map<String, dynamic> primitive;
@@ -9,6 +11,7 @@ class StackLayoutWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final children = primitive['children'] as List<dynamic>? ?? [];
     return Container(
+      key: ValueKey(primitive['id'] ?? ''),
       margin: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.blue.shade100),
@@ -39,6 +42,7 @@ class TextViewWidget extends StatelessWidget {
       padding: const EdgeInsets.all(8.0),
       child: Text(
         content.toString(),
+        key: ValueKey(primitive['id'] ?? ''),
         style: TextStyle(fontSize: fontSize, fontWeight: fontWeight),
       ),
     );
@@ -54,6 +58,7 @@ class ChatViewBasicWidget extends StatelessWidget {
     final config = primitive['config'] as Map<String, dynamic>? ?? {};
     final title = config['title']?.toString() ?? primitive['id']?.toString() ?? '';
     return Container(
+      key: ValueKey(primitive['id'] ?? ''),
       margin: const EdgeInsets.all(16.0),
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -117,7 +122,8 @@ class ChatViewBasicWidget extends StatelessWidget {
 class InputFieldWidget extends StatefulWidget {
   final Map<String, dynamic> primitive;
   final void Function(String)? onValueChange;
-  const InputFieldWidget({required this.primitive, this.onValueChange, Key? key}) : super(key: key);
+  final void Function()? onAction;
+  const InputFieldWidget({required this.primitive, this.onValueChange, this.onAction, Key? key}) : super(key: key);
   @override
   State<InputFieldWidget> createState() => _InputFieldWidgetState();
 }
@@ -131,7 +137,6 @@ class _InputFieldWidgetState extends State<InputFieldWidget> {
   @override
   void didUpdateWidget(InputFieldWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Update controller text if primitive content changes externally
     final newText = widget.primitive['content'] ?? '';
     if (_controller.text != newText) {
       _controller.text = newText;
@@ -139,19 +144,25 @@ class _InputFieldWidgetState extends State<InputFieldWidget> {
   }
   @override
   Widget build(BuildContext context) {
+    final config = widget.primitive['config'] as Map<String, dynamic>? ?? {};
+    final multiline = config['multiline'] == true;
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: TextField(
+        key: ValueKey(widget.primitive['id'] ?? ''),
         controller: _controller,
         decoration: InputDecoration(
           labelText: widget.primitive['label'] ?? 'Input',
           border: const OutlineInputBorder(),
         ),
+        minLines: multiline ? (config['rows'] ?? 3) : 1,
+        maxLines: multiline ? null : 1,
         onChanged: (val) {
           if (widget.onValueChange != null) widget.onValueChange!(val);
         },
         onSubmitted: (val) {
           if (widget.onValueChange != null) widget.onValueChange!(val);
+          if (!multiline && widget.onAction != null) widget.onAction!();
         },
       ),
     );
@@ -164,11 +175,14 @@ class ButtonWidget extends StatelessWidget {
   const ButtonWidget({required this.primitive, this.onAction, Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context) {
+    final config = primitive['config'] as Map<String, dynamic>? ?? {};
+    final label = config['label'] ?? primitive['label'] ?? 'Button';
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: ElevatedButton(
+        key: ValueKey(primitive['id'] ?? ''),
         onPressed: onAction,
-        child: Text(primitive['label'] ?? 'Button'),
+        child: Text(label),
       ),
     );
   }
@@ -187,6 +201,7 @@ class LogViewWidget extends StatelessWidget {
       entries = [content];
     }
     return Container(
+      key: ValueKey(primitive['id'] ?? ''),
       margin: const EdgeInsets.all(16.0),
       padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
@@ -222,7 +237,10 @@ class MarkdownViewWidget extends StatelessWidget {
     final content = primitive['content'] ?? '';
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: MarkdownBody(data: content.toString()),
+      child: MarkdownBody(
+        key: ValueKey(primitive['id'] ?? ''),
+        data: content.toString(),
+      ),
     );
   }
 }
@@ -234,6 +252,7 @@ class StreamingTextViewWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final content = primitive['content'] ?? '';
     return Container(
+      key: ValueKey(primitive['id'] ?? ''),
       margin: const EdgeInsets.all(8.0),
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
@@ -252,6 +271,7 @@ class CodeViewWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final content = primitive['content'] ?? '';
     return Container(
+      key: ValueKey(primitive['id'] ?? ''),
       margin: const EdgeInsets.all(8.0),
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
@@ -272,7 +292,6 @@ class HtmlViewWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = primitive['content'];
-    // Basic rendering: show as string, table, or error. Expand as needed.
     if (content is Map && content.containsKey('viz_type')) {
       final vizType = content['viz_type'];
       final vizContent = content['content'];
@@ -282,6 +301,7 @@ class HtmlViewWidget extends StatelessWidget {
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
+            key: ValueKey(primitive['id'] ?? ''),
             columns: columns.map((c) => DataColumn(label: Text(c.toString()))).toList(),
             rows: rows.map((row) {
               final cells = row as List<dynamic>? ?? [];
@@ -294,19 +314,28 @@ class HtmlViewWidget extends StatelessWidget {
       } else if (vizType == 'message' || vizType == 'scalar') {
         return Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Text(vizContent?.toString() ?? ''),
+          child: Text(
+            vizContent?.toString() ?? '',
+            key: ValueKey(primitive['id'] ?? ''),
+          ),
         );
       } else if (vizType == 'error') {
         return Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Text(vizContent?.toString() ?? '', style: const TextStyle(color: Colors.red)),
+          child: Text(
+            vizContent?.toString() ?? '',
+            key: ValueKey(primitive['id'] ?? ''),
+            style: const TextStyle(color: Colors.red),
+          ),
         );
       }
     }
-    // Fallback: render as string
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: Text(content?.toString() ?? ''),
+      child: Text(
+        content?.toString() ?? '',
+        key: ValueKey(primitive['id'] ?? ''),
+      ),
     );
   }
 }
@@ -315,7 +344,7 @@ final Map<String, Widget Function(Map<String, dynamic> primitive, {void Function
   'StackLayout': (primitive, {sendAction, onValueChange, onAction}) => StackLayoutWidget(primitive: primitive, sendAction: sendAction),
   'TextView': (primitive, {sendAction, onValueChange, onAction}) => TextViewWidget(primitive: primitive),
   'ChatViewBasic': (primitive, {sendAction, onValueChange, onAction}) => ChatViewBasicWidget(primitive: primitive),
-  'InputField': (primitive, {sendAction, onValueChange, onAction}) => InputFieldWidget(primitive: primitive, onValueChange: onValueChange),
+  'InputField': (primitive, {sendAction, onValueChange, onAction}) => InputFieldWidget(primitive: primitive, onValueChange: onValueChange, onAction: onAction),
   'Button': (primitive, {sendAction, onValueChange, onAction}) => ButtonWidget(primitive: primitive, onAction: onAction),
   'LogView': (primitive, {sendAction, onValueChange, onAction}) => LogViewWidget(primitive: primitive),
   'MarkdownView': (primitive, {sendAction, onValueChange, onAction}) => MarkdownViewWidget(primitive: primitive),
@@ -334,37 +363,109 @@ class DynamicRenderer extends StatefulWidget {
 
 class _DynamicRendererState extends State<DynamicRenderer> {
   Map<String, dynamic> _contentOverrides = {};
+  TextEditingController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.primitive['type'] == 'InputField') {
+      _controller = TextEditingController(text: widget.primitive['content'] ?? '');
+    }
+  }
+
+  @override
+  void didUpdateWidget(DynamicRenderer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.primitive['type'] == 'InputField') {
+      final newText = widget.primitive['content'] ?? '';
+      if (_controller != null && _controller!.text != newText) {
+        _controller!.text = newText;
+      }
+    }
+  }
 
   void _handleValueChange(String value) {
     setState(() {
       _contentOverrides['content'] = value;
+      print('Value changed: $value');
+      print('Value changed2: $_contentOverrides');
+
     });
   }
 
   void _handleAction() {
     final primitive = widget.primitive;
     final actionId = primitive['actionId'] ?? primitive['id'];
-    final value = _contentOverrides['content'] ?? primitive['content'] ?? '';
+    final wsProvider = Provider.of<WebSocketProvider>(context, listen: false);
+
+    String value = primitive['content'] ?? '';
+    if (_controller != null) {
+      value = _controller!.text;
+    } else if (_contentOverrides.containsKey('content')) {
+      value = _contentOverrides['content'];
+    }
+    print('Value to send: $value');
+    print('contentOverrides: $_contentOverrides');
+    print('primitive: $primitive');
+
     final config = primitive['config'] as Map<String, dynamic>? ?? {};
     final valueSourceElementIds = config['valueSourceElementIds'] as List<dynamic>?;
+    Map<String, dynamic> valuesFromSources = {};
+    if (valueSourceElementIds != null && valueSourceElementIds.isNotEmpty) {
+      for (final id in valueSourceElementIds) {
+        String sourceValue = '';
+        if (id == primitive['id'] && _controller != null) {
+          sourceValue = _controller!.text;
+        } else {
+          final root = wsProvider.uiState != null ? wsProvider.uiState!['rootElement'] : null;
+          if (root != null) {
+            final found = wsProvider.findPrimitiveById(root, id);
+            if (found != null && found['content'] != null) {
+              sourceValue = found['content'].toString();
+            }
+          }
+        }
+        valuesFromSources[id.toString()] = sourceValue;
+      }
+    }
+
     String argumentKey = 'value';
     if (config['argumentKey'] is String) {
       argumentKey = config['argumentKey'];
     } else if (primitive['argumentKey'] is String) {
       argumentKey = primitive['argumentKey'];
-    } else if (valueSourceElementIds != null && valueSourceElementIds.isNotEmpty) {
-      argumentKey = valueSourceElementIds.first.toString();
     }
-    if ((actionId == 'chatbot_query' || actionId == 'process_user_query' || actionId.toString().contains('query')) && argumentKey != 'query') {
+    if ((actionId == 'chatbot_query' || actionId == 'process_user_query' || 
+        actionId.toString().contains('query')) && argumentKey != 'query') {
       argumentKey = 'query';
     }
+
+    String valueToSend = value;
+    if (valueSourceElementIds != null && valueSourceElementIds.isNotEmpty) {
+      for (final id in valueSourceElementIds) {
+        final idStr = id.toString();
+        if (idStr.contains('input') || idStr.contains('chat') || idStr.contains('query')) {
+          if (valuesFromSources.containsKey(idStr) && valuesFromSources[idStr].toString().isNotEmpty) {
+            valueToSend = valuesFromSources[idStr].toString();
+            break;
+          }
+        }
+      }
+    }
+
+    final frontendActions = config['frontendActions'] as List<dynamic>?;
+    Map<String, dynamic> valuesForBackend = valuesFromSources.isNotEmpty ? valuesFromSources : {primitive['id']: valueToSend};
+    if (frontendActions != null && frontendActions.isNotEmpty) {
+      wsProvider.performFrontendActions(frontendActions, valuesForBackend);
+    }
+
     if (widget.sendAction != null) {
       widget.sendAction!({
         'type': 'ui_action',
         'payload': {
           'actionId': actionId,
           'sourceElementId': primitive['id'],
-          'arguments': {argumentKey: value}
+          'arguments': {argumentKey: valueToSend}
         }
       });
     }
@@ -377,6 +478,14 @@ class _DynamicRendererState extends State<DynamicRenderer> {
     final widgetBuilder = primitiveMap[type];
     final primitiveWithOverrides = Map<String, dynamic>.from(widget.primitive)..addAll(_contentOverrides);
     if (widgetBuilder != null) {
+      if (type == 'InputField') {
+        return InputFieldWidget(
+          primitive: primitiveWithOverrides,
+          onValueChange: _handleValueChange,
+          onAction: _handleAction,
+          key: ValueKey(id),
+        );
+      }
       return widgetBuilder(
         primitiveWithOverrides,
         sendAction: widget.sendAction,
