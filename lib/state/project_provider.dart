@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'project_api_service.dart';
-import 'auth_provider.dart';
+import '../config.dart';
 
 enum ConnectionStatus {
   disconnected,
@@ -12,6 +11,7 @@ enum ConnectionStatus {
   error,
 }
 
+/// Represents a project entity with an ID and name.
 class Project {
   final String id;
   final String name;
@@ -20,6 +20,7 @@ class Project {
   Project({required this.id, required this.name});
 }
 
+/// Provides project list, current project, and connection status management.
 class ProjectProvider extends ChangeNotifier {
   List<Project> _projects = [];
   Project? _currentProject;
@@ -37,6 +38,7 @@ class ProjectProvider extends ChangeNotifier {
   ConnectionStatus get projectConnectionStatus => _projectConnectionStatus;
   String? get projectConnectionError => _projectConnectionError;
 
+  /// Sets the connection status for the current project.
   void setProjectConnectionStatus(ConnectionStatus status, [String? error]) {
     if (status != _projectConnectionStatus || error != _projectConnectionError) {
       _projectConnectionStatus = status;
@@ -45,6 +47,7 @@ class ProjectProvider extends ChangeNotifier {
     }
   }
 
+  /// Sets the initial project if none is currently selected.
   void setInitialProject(Project project) {
     if (project.id.isNotEmpty && _currentProject == null) {
       _currentProject = project;
@@ -55,6 +58,7 @@ class ProjectProvider extends ChangeNotifier {
     }
   }
 
+  /// Loads projects from a simulated source and updates the state.
   Future<void> loadProjects() async {
     if (_isLoading) return;
     _isLoading = true;
@@ -73,6 +77,7 @@ class ProjectProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Loads projects from the backend using the provided token.
   Future<void> loadProjectsFromBackend(String token) async {
     if (_isLoading) return;
     _isLoading = true;
@@ -80,7 +85,7 @@ class ProjectProvider extends ChangeNotifier {
     notifyListeners();
     try {
       // Fetch the full response so we can access current_project
-      final url = Uri.parse('http://10.0.2.2:8000/api/projects/?skip=0&limit=100');
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/projects/?skip=0&limit=100');
       final headers = {
         'Authorization': 'Bearer $token',
         'Accept': 'application/json',
@@ -113,6 +118,7 @@ class ProjectProvider extends ChangeNotifier {
     }
   }
 
+  /// Sets the current project and resets the state.
   void _setCurrentProjectAndResetState(Project project) {
     if (_currentProject?.id != project.id) {
       _currentProject = project;
@@ -124,6 +130,7 @@ class ProjectProvider extends ChangeNotifier {
     }
   }
 
+  /// Switches to a different project by its ID.
   Future<void> switchProject(String projectId) async {
     if (_currentProject?.id == projectId) return;
     _isLoadingDetails = true;
@@ -136,6 +143,7 @@ class ProjectProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Resets the provider state to its initial values.
   void reset() {
     _projects = [];
     _currentProject = null;

@@ -37,21 +37,19 @@ class StackLayoutWidget extends StatelessWidget {
                 ]
               ],
             )
-          : SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: crossAxisAlignment,
-                children: [
-                  for (int i = 0; i < children.length; i++) ...[
-                    if (i > 0) SizedBox(height: gap),
-                    if (children[i] is Map<String, dynamic>)
-                      DynamicRenderer(
-                        key: ValueKey(children[i]['id'] ?? i),
-                        primitive: children[i] as Map<String, dynamic>,
-                        sendAction: sendAction,
-                      ),
-                  ]
-                ],
-              ),
+          : Column(
+              crossAxisAlignment: crossAxisAlignment,
+              children: [
+                for (int i = 0; i < children.length; i++) ...[
+                  if (i > 0) SizedBox(height: gap),
+                  if (children[i] is Map<String, dynamic>)
+                    DynamicRenderer(
+                      key: ValueKey(children[i]['id'] ?? i),
+                      primitive: children[i] as Map<String, dynamic>,
+                      sendAction: sendAction,
+                    ),
+                ]
+              ],
             ),
     );
   }

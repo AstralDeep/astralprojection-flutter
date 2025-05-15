@@ -1,0 +1,8 @@
+// lib/config.dart
+class AppConfig {
+  static const String backendHost = String.fromEnvironment('BACKEND_HOST', defaultValue: '');
+  static const int backendPort = int.fromEnvironment('BACKEND_PORT', defaultValue: );
+
+  static String get apiBaseUrl => 'http://$backendHost:$backendPort/api';
+  static String get wsBaseUrl => 'ws://$backendHost:$backendPort/api/ws';
+}

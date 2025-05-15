@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
 
+/// Provides WebSocket connection and UI state management for dynamic rendering.
 class WebSocketProvider extends ChangeNotifier {
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
@@ -18,6 +19,7 @@ class WebSocketProvider extends ChangeNotifier {
   String? get error => _error;
   Map<String, dynamic>? get uiState => _uiState;
 
+  /// Updates the content of a primitive in the UI state.
   void _updatePrimitiveContent(Map<String, dynamic> update) {
     if (_uiState == null || _uiState!['rootElement'] == null) return;
     final targetId = update['targetId'];
@@ -64,7 +66,7 @@ class WebSocketProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Helper: Find primitive by ID ---
+  /// Finds a primitive by its ID in the UI state tree.
   Map<String, dynamic>? findPrimitiveById(Map<String, dynamic> node, String targetId) {
     if (node['id'] == targetId) return node;
     if (node['children'] is List) {
@@ -78,7 +80,7 @@ class WebSocketProvider extends ChangeNotifier {
     return null;
   }
 
-  // --- Helper: Find primitive by updateBinding ---
+  /// Finds a primitive by its updateBinding in the UI state tree.
   Map<String, dynamic>? findPrimitiveByBinding(Map<String, dynamic> node, String targetBinding) {
     if (node['updateBinding'] == targetBinding) return node;
     if (node['children'] is List) {
@@ -92,7 +94,7 @@ class WebSocketProvider extends ChangeNotifier {
     return null;
   }
 
-  // --- Helper: Perform frontend actions (echoToView, clearElement) ---
+  /// Performs frontend actions such as echoToView and clearElement.
   void performFrontendActions(List<dynamic> frontendActions, Map<String, dynamic> valuesForBackend) {
     if (_uiState == null || _uiState!['rootElement'] == null) return;
     final root = _uiState!['rootElement'];
@@ -136,6 +138,8 @@ class WebSocketProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Establishes a WebSocket connection to the given URL.
+  /// Optionally, a JWT can be provided for authentication.
   void connect({required String url, String? jwt}) {
     disconnect();
     try {
@@ -144,6 +148,7 @@ class WebSocketProvider extends ChangeNotifier {
       );
       _connected = true;
       _error = null;
+      // TODO: Add user-friendly error handling for WebSocket disconnects and failures.
       // Send register_capabilities message immediately after connecting
       final registerMsg = jsonEncode({
         'type': 'register_capabilities',
@@ -201,12 +206,15 @@ class WebSocketProvider extends ChangeNotifier {
     }
   }
 
+  /// Sends data through the WebSocket connection.
   void send(dynamic data) {
     if (_channel != null && _connected) {
+      // TODO: Never log or print sensitive information in production.
       _channel!.sink.add(jsonEncode(data));
     }
   }
 
+  /// Disconnects the WebSocket connection and cleans up resources.
   void disconnect() {
     _subscription?.cancel();
     _channel?.sink.close(status.goingAway);

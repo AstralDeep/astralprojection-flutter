@@ -182,7 +182,7 @@ class _DynamicRendererState extends State<DynamicRenderer> {
         'payload': {
           'actionId': actionId,
           'sourceElementId': primitive['id'],
-          'arguments': {argumentKey: 'hi'}
+          'arguments': {argumentKey: valueToSend}
         }
       });
     }

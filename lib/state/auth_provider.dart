@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config.dart';
 
 class AuthProfile {
   final String? id;
@@ -46,7 +47,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       // Real API call to backend for authentication
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8000/api/auth/login'),
+        Uri.parse('${AppConfig.apiBaseUrl}/auth/login'),
         headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
         body: jsonEncode({'username': username, 'password': password}),
       );

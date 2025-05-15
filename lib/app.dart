@@ -8,6 +8,19 @@ import 'state/auth_provider.dart';
 import 'state/project_provider.dart';
 import 'state/web_socket_provider.dart';
 
+// TODO: Add global error handling and user-friendly error UI.
+// TODO: Move colors and text styles to a central theme file.
+// TODO: Add localization (l10n) support for multi-language UI.
+// TODO: Consider more robust state management if app grows (e.g., Riverpod, Bloc).
+
+void main() {
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    // TODO: Optionally report errors to a logging service.
+  };
+  runApp(const App());
+}
+
 class App extends StatefulWidget {
   const App({Key? key}) : super(key: key);
 

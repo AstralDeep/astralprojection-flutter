@@ -6,6 +6,7 @@ import '../../state/project_provider.dart';
 import '../../state/auth_provider.dart';
 import '../../state/web_socket_provider.dart';
 import 'project_dropdown.dart';
+import '../../config.dart';
 
 class WorkspaceLayout extends StatelessWidget {
   final String? projectName;
@@ -32,7 +33,7 @@ class WorkspaceLayout extends StatelessWidget {
     // WebSocket connection logic
     if (hasProject && authProvider.token != null && !wsProvider.connected) {
       // Use the correct backend WebSocket URL and query parameter
-      final wsUrl = 'ws://10.0.2.2:8000/api/ws/stream/mcp:${projectProvider.currentProject!.id}?token=${authProvider.token}';
+      final wsUrl = '${AppConfig.wsBaseUrl}/stream/mcp:${projectProvider.currentProject!.id}?token=${authProvider.token}';
       WidgetsBinding.instance.addPostFrameCallback((_) {
         wsProvider.connect(url: wsUrl);
       });

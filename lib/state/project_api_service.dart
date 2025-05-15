@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config.dart';
 
 class ProjectApiService {
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+  static String get baseUrl => AppConfig.apiBaseUrl;
 
   static Future<List<Map<String, dynamic>>> fetchProjects(String token, {int skip = 0, int limit = 100}) async {
     final url = Uri.parse('$baseUrl/projects/?skip=$skip&limit=$limit');
