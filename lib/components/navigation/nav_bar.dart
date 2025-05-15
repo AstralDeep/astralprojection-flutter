@@ -27,21 +27,27 @@ class _NavBarState extends State<NavBar> {
         children: [
           Text('AI Interface', style: TextStyle(color: Colors.blue[800], fontWeight: FontWeight.bold, fontSize: 20)),
           const SizedBox(width: 16),
-          Builder(
-            builder: (context) {
-              final projectProvider = context.findAncestorWidgetOfExactType<MaterialApp>() != null
-                  ? Provider.of<ProjectProvider>(context, listen: true)
-                  : null;
-              final projectName = projectProvider?.currentProject?.name ?? 'No Project';
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(projectName, style: TextStyle(color: Colors.blue[700], fontSize: 14)),
-              );
-            },
+          Flexible(
+            child: Builder(
+              builder: (context) {
+                final projectProvider = context.findAncestorWidgetOfExactType<MaterialApp>() != null
+                    ? Provider.of<ProjectProvider>(context, listen: true)
+                    : null;
+                final projectName = projectProvider?.currentProject?.name ?? 'No Project';
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    projectName,
+                    style: TextStyle(color: Colors.blue[700], fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),

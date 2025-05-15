@@ -80,7 +80,7 @@ class ProjectProvider extends ChangeNotifier {
     notifyListeners();
     try {
       // Fetch the full response so we can access current_project
-      final url = Uri.parse('http://127.0.0.1:8000/api/projects/?skip=0&limit=100');
+      final url = Uri.parse('http://10.0.2.2:8000/api/projects/?skip=0&limit=100');
       final headers = {
         'Authorization': 'Bearer $token',
         'Accept': 'application/json',

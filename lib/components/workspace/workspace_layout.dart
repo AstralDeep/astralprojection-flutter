@@ -32,7 +32,7 @@ class WorkspaceLayout extends StatelessWidget {
     // WebSocket connection logic
     if (hasProject && authProvider.token != null && !wsProvider.connected) {
       // Use the correct backend WebSocket URL and query parameter
-      final wsUrl = 'ws://127.0.0.1:8000/api/ws/stream/mcp:${projectProvider.currentProject!.id}?token=${authProvider.token}';
+      final wsUrl = 'ws://10.0.2.2:8000/api/ws/stream/mcp:${projectProvider.currentProject!.id}?token=${authProvider.token}';
       WidgetsBinding.instance.addPostFrameCallback((_) {
         wsProvider.connect(url: wsUrl);
       });
