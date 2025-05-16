@@ -15,12 +15,12 @@ class WorkspaceLayout extends StatelessWidget {
   final bool hasRootElement; // Simulates if UI definition is loaded
 
   const WorkspaceLayout({
-    Key? key,
+    super.key,
     this.projectName,
     this.wsStatus = 'disconnected',
     this.wsError,
     this.hasRootElement = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,8 +46,8 @@ class WorkspaceLayout extends StatelessWidget {
 
     if (!hasProject) {
       // Debug: print current project and projects
-      debugPrint('[WorkspaceLayout] (build) currentProject: ' + (projectProvider.currentProject != null ? '{id: ' + projectProvider.currentProject!.id + ', name: ' + projectProvider.currentProject!.name + '}' : 'null'));
-      debugPrint('[WorkspaceLayout] (build) projects: ' + projectProvider.projects.map((p) => '{id: ' + p.id + ', name: ' + p.name + '}').toList().toString());
+      debugPrint('[WorkspaceLayout] (build) currentProject: ${projectProvider.currentProject != null ? '{id: ' + projectProvider.currentProject!.id + ', name: ' + projectProvider.currentProject!.name + '}' : 'null'}');
+      debugPrint('[WorkspaceLayout] (build) projects: ${projectProvider.projects.map((p) => '{id: ' + p.id + ', name: ' + p.name + '}').toList()}');
 
       // Auto-load projects if not already loaded
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -57,8 +57,8 @@ class WorkspaceLayout extends StatelessWidget {
         if (projectProvider.projects.isEmpty && !projectProvider.isLoading && authProvider.token != null) {
           projectProvider.loadProjectsFromBackend(authProvider.token!);
         }
-        debugPrint('[WorkspaceLayout] projectProvider.projects: ' + projectProvider.projects.map((p) => '{id: ' + p.id + ', name: ' + p.name + '}').toList().toString());
-        debugPrint('[WorkspaceLayout] projectProvider.currentProject: ' + (projectProvider.currentProject != null ? '{id: ' + projectProvider.currentProject!.id + ', name: ' + projectProvider.currentProject!.name + '}' : 'null'));
+        debugPrint('[WorkspaceLayout] projectProvider.projects: ${projectProvider.projects.map((p) => '{id: ' + p.id + ', name: ' + p.name + '}').toList()}');
+        debugPrint('[WorkspaceLayout] projectProvider.currentProject: ${projectProvider.currentProject != null ? '{id: ' + projectProvider.currentProject!.id + ', name: ' + projectProvider.currentProject!.name + '}' : 'null'}');
       });
       return Scaffold(
         appBar: AppBar(

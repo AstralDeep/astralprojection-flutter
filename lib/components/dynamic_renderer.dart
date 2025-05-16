@@ -25,7 +25,7 @@ class UnknownPrimitiveWidget extends StatelessWidget {
   final String id;
   final String type;
   final String? gridArea;
-  const UnknownPrimitiveWidget({required this.id, required this.type, this.gridArea, Key? key}) : super(key: key);
+  const UnknownPrimitiveWidget({required this.id, required this.type, this.gridArea, super.key});
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -79,13 +79,13 @@ Map<String, dynamic>? findPrimitiveByBinding(Map<String, dynamic>? node, String?
 class DynamicRenderer extends StatefulWidget {
   final Map<String, dynamic> primitive;
   final void Function(Map<String, dynamic> message)? sendAction;
-  const DynamicRenderer({Key? key, required this.primitive, this.sendAction}) : super(key: key);
+  const DynamicRenderer({super.key, required this.primitive, this.sendAction});
   @override
   State<DynamicRenderer> createState() => _DynamicRendererState();
 }
 
 class _DynamicRendererState extends State<DynamicRenderer> {
-  Map<String, dynamic> _contentOverrides = {};
+  final Map<String, dynamic> _contentOverrides = {};
   TextEditingController? _controller;
 
   @override

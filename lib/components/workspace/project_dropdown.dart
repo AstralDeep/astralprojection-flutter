@@ -5,6 +5,8 @@ import '../../state/auth_provider.dart';
 import '../common/loading_spinner.dart';
 
 class ProjectDropdown extends StatelessWidget {
+  const ProjectDropdown({super.key});
+
   @override
   Widget build(BuildContext context) {
     final projectProvider = Provider.of<ProjectProvider>(context);
