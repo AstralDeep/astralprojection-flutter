@@ -92,12 +92,12 @@ class ProjectProvider extends ChangeNotifier {
       };
       final response = await http.get(url, headers: headers);
       final data = json.decode(response.body);
-      print('[ProjectProvider] Raw backend response: ' + data.toString());
+      print('[ProjectProvider] Raw backend response: $data');
       if (data is Map<String, dynamic> && data['projects'] is List) {
         _projects = List<Map<String, dynamic>>.from(data['projects'])
             .map((p) => Project(id: p['id'].toString(), name: p['name'] ?? 'Unnamed Project'))
             .toList();
-        print('[ProjectProvider] _projects after mapping: ' + _projects.map((p) => '{id: ' + p.id + ', name: ' + p.name + '}').toList().toString());
+        print('[ProjectProvider] _projects after mapping: ${_projects.map((p) => '{id: ' + p.id + ', name: ' + p.name + '}').toList()}');
         if (data['current_project'] != null) {
           final cp = data['current_project'];
           _currentProject = Project(id: cp['id'].toString(), name: cp['name'] ?? 'Unnamed Project');
@@ -107,7 +107,7 @@ class ProjectProvider extends ChangeNotifier {
           _projectConnectionStatus = ConnectionStatus.connected;
         }
       } else {
-        _error = 'Malformed projects response: ' + data.toString();
+        _error = 'Malformed projects response: $data';
       }
       _isLoading = false;
       notifyListeners();

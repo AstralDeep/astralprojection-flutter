@@ -28,7 +28,7 @@ class ProjectApiService {
       } else if (data is List) {
         return List<Map<String, dynamic>>.from(data);
       }
-      throw Exception('Malformed projects response: ' + data.toString());
+      throw Exception('Malformed projects response: $data');
     } else if (response.statusCode == 401) {
       throw Exception('Authentication failed or token expired. Please log in again.');
     } else {

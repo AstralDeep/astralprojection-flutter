@@ -5,7 +5,7 @@ import '../../state/project_provider.dart';
 class NavBar extends StatefulWidget {
   final VoidCallback? onToggleControlPanel;
 
-  const NavBar({Key? key, this.onToggleControlPanel}) : super(key: key);
+  const NavBar({super.key, this.onToggleControlPanel});
 
   @override
   State<NavBar> createState() => _NavBarState();

@@ -5,10 +5,10 @@ class LoadingSpinner extends StatelessWidget {
   final String size;
 
   const LoadingSpinner({
-    Key? key,
+    super.key,
     this.message = 'Loading...',
     this.size = 'md',
-  }) : super(key: key);
+  });
 
   double getSpinnerSize() {
     switch (size) {

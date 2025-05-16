@@ -5,7 +5,7 @@ import '../common/loading_spinner.dart';
 
 class LoginPage extends StatefulWidget {
   final VoidCallback? onLoginSuccess;
-  const LoginPage({Key? key, this.onLoginSuccess}) : super(key: key);
+  const LoginPage({super.key, this.onLoginSuccess});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
