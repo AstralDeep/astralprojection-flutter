@@ -41,6 +41,9 @@ class _AppState extends State<App> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        scaffoldBackgroundColor: const Color(0xFFF5F7FA), // slightly off-white gray
+      ),
       home: MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => AuthProvider()),
