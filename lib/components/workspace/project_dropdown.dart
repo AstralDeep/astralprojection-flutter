@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../state/project_provider.dart';
 import '../../state/auth_provider.dart';
-import '../common/loading_spinner.dart';
 
 class ProjectDropdown extends StatelessWidget {
   const ProjectDropdown({super.key});
