@@ -97,7 +97,7 @@ class ProjectProvider extends ChangeNotifier {
         _projects = List<Map<String, dynamic>>.from(data['projects'])
             .map((p) => Project(id: p['id'].toString(), name: p['name'] ?? 'Unnamed Project'))
             .toList();
-        print('[ProjectProvider] _projects after mapping: ${_projects.map((p) => '{id: ' + p.id + ', name: ' + p.name + '}').toList()}');
+        print('[ProjectProvider] _projects after mapping: ${_projects.map((p) => '{id: ${p.id}, name: ${p.name}}').toList()}');
         if (data['current_project'] != null) {
           final cp = data['current_project'];
           _currentProject = Project(id: cp['id'].toString(), name: cp['name'] ?? 'Unnamed Project');
