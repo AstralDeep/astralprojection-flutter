@@ -66,17 +66,15 @@ class _AppState extends State<App> {
                       child: NavBar(onToggleControlPanel: handleToggleControlPanel),
                     )
                   : null,
-              body: Center(
-                child: auth.isAuthenticated
-                    ? WorkspaceLayout(
-                        projectName: project.currentProject?.name ?? '',
-                        wsStatus: project.projectConnectionStatus.name,
-                        hasRootElement: false, // TODO: Bind to real UI definition state
-                      )
-                    : LoginPage(
-                        onLoginSuccess: () => auth.initializeAuth(),
-                      ),
-              ),
+              body: auth.isAuthenticated
+                  ? WorkspaceLayout(
+                      projectName: project.currentProject?.name ?? '',
+                      wsStatus: project.projectConnectionStatus.name,
+                      hasRootElement: false, // TODO: Bind to real UI definition state
+                    )
+                  : LoginPage(
+                      onLoginSuccess: () => auth.initializeAuth(),
+                    ),
             );
           },
         ),

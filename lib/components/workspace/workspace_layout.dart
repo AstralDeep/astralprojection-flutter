@@ -156,6 +156,7 @@ class _WorkspaceLayoutState extends State<WorkspaceLayout> {
       );
     }
     
+
     // Wrap the content in a SingleChildScrollView to prevent overflow.
     return SingleChildScrollView(
       padding: const EdgeInsets.all(10.0),
