@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:logger/logger.dart';
 import '../config.dart';
 
 enum ConnectionStatus {
@@ -29,6 +30,7 @@ class ProjectProvider extends ChangeNotifier {
   String? _error;
   ConnectionStatus _projectConnectionStatus = ConnectionStatus.disconnected;
   String? _projectConnectionError;
+  final _logger = Logger();
 
   List<Project> get projects => _projects;
   Project? get currentProject => _currentProject;
@@ -92,12 +94,12 @@ class ProjectProvider extends ChangeNotifier {
       };
       final response = await http.get(url, headers: headers);
       final data = json.decode(response.body);
-      print('[ProjectProvider] Raw backend response: $data');
+      _logger.d('[ProjectProvider] Raw backend response: $data');
       if (data is Map<String, dynamic> && data['projects'] is List) {
         _projects = List<Map<String, dynamic>>.from(data['projects'])
             .map((p) => Project(id: p['id'].toString(), name: p['name'] ?? 'Unnamed Project'))
             .toList();
-        print('[ProjectProvider] _projects after mapping: ${_projects.map((p) => '{id: ${p.id}, name: ${p.name}}').toList()}');
+        _logger.d('[ProjectProvider] _projects after mapping: ${_projects.map((p) => '{id: ${p.id}, name: ${p.name}}').toList()}');
         if (data['current_project'] != null) {
           final cp = data['current_project'];
           _currentProject = Project(id: cp['id'].toString(), name: cp['name'] ?? 'Unnamed Project');

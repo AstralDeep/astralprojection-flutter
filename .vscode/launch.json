@@ -15,7 +15,7 @@
             "name": "astralprojection-flutter",
             "request": "launch",
             "type": "dart",
-            "args": ["-d", "web-server", "--web-port", "3000"]
+            "args": ["-d", "chrome", "--web-port", "3000"]
         },
         {
             "name": "astralprojection-flutter (profile mode)",

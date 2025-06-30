@@ -8,11 +8,11 @@ import '../../state/web_socket_provider.dart';
 import 'project_dropdown.dart';
 import '../../config.dart';
 
-class WorkspaceLayout extends StatelessWidget {
+class WorkspaceLayout extends StatefulWidget {
   final String? projectName;
-  final String wsStatus; // 'connecting', 'reconnecting', 'connected', 'error', etc.
+  final String wsStatus;
   final String? wsError;
-  final bool hasRootElement; // Simulates if UI definition is loaded
+  final bool hasRootElement;
 
   const WorkspaceLayout({
     super.key,
@@ -21,6 +21,26 @@ class WorkspaceLayout extends StatelessWidget {
     this.wsError,
     this.hasRootElement = false,
   });
+
+  @override
+  State<WorkspaceLayout> createState() => _WorkspaceLayoutState();
+}
+
+class _WorkspaceLayoutState extends State<WorkspaceLayout> {
+  @override
+  void initState() {
+    super.initState();
+    // Use addPostFrameCallback to ensure the context is available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final projectProvider = Provider.of<ProjectProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      // Load projects only if they are not already loaded or being loaded
+      if (projectProvider.projects.isEmpty && !projectProvider.isLoading && authProvider.token != null) {
+        projectProvider.loadProjectsFromBackend(authProvider.token!);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +52,6 @@ class WorkspaceLayout extends StatelessWidget {
 
     // WebSocket connection logic
     if (hasProject && authProvider.token != null && !wsProvider.connected) {
-      // Use the correct backend WebSocket URL and query parameter
       final wsUrl = '${AppConfig.wsBaseUrl}/stream/mcp:${projectProvider.currentProject!.id}?token=${authProvider.token}';
       WidgetsBinding.instance.addPostFrameCallback((_) {
         wsProvider.connect(url: wsUrl);
@@ -45,50 +64,7 @@ class WorkspaceLayout extends StatelessWidget {
     }
 
     if (!hasProject) {
-      // Debug: print current project and projects
-      debugPrint('[WorkspaceLayout] (build) currentProject: ${projectProvider.currentProject != null ? '{id: ${projectProvider.currentProject!.id}, name: ${projectProvider.currentProject!.name}}' : 'null'}');
-      debugPrint('[WorkspaceLayout] (build) projects: ${projectProvider.projects.map((p) => '{id: ${p.id}, name: ${p.name}}').toList()}');
-
-      // Auto-load projects if not already loaded
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final projectProvider = Provider.of<ProjectProvider>(context, listen: false);
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        debugPrint('[WorkspaceLayout] authProvider.token: \'${authProvider.token}\'');
-        if (projectProvider.projects.isEmpty && !projectProvider.isLoading && authProvider.token != null) {
-          projectProvider.loadProjectsFromBackend(authProvider.token!);
-        }
-        debugPrint('[WorkspaceLayout] projectProvider.projects: ${projectProvider.projects.map((p) => '{id: ${p.id}, name: ${p.name}}').toList()}');
-        debugPrint('[WorkspaceLayout] projectProvider.currentProject: ${projectProvider.currentProject != null ? '{id: ${projectProvider.currentProject!.id}, name: ${projectProvider.currentProject!.name}}' : 'null'}');
-      });
       return Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            'AI Interface',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF4A5CF0),
-            ),
-          ),
-          backgroundColor: Colors.white,
-          elevation: 1,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.settings, color: Colors.grey),
-              onPressed: () {},
-              tooltip: 'Settings',
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: CircleAvatar(
-                backgroundColor: Colors.grey.shade200,
-                child: const Text(
-                  'P',
-                  style: TextStyle(color: Colors.black),
-                ),
-              ),
-            ),
-          ],
-        ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -129,6 +105,7 @@ class WorkspaceLayout extends StatelessWidget {
         },
       );
     } else {
+      // This else block might be unreachable now, but kept for safety.
       return Scaffold(
         appBar: AppBar(
           title: const Text(
@@ -178,10 +155,10 @@ class WorkspaceLayout extends StatelessWidget {
         backgroundColor: const Color(0xFFF7F9FB),
       );
     }
-    return Container(
+    
+    // Wrap the content in a SingleChildScrollView to prevent overflow.
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(10.0),
-      height: double.infinity,
-      width: double.infinity,
       child: content,
     );
   }

@@ -1,7 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'primitives.dart';
 import '../state/web_socket_provider.dart';
+
+import 'primitives/stack_layout.dart';
+import 'primitives/audio_upload.dart';
+import 'primitives/card.dart';
+import 'primitives/checkbox.dart';
+import 'primitives/file_upload.dart';
+import 'primitives/icon.dart';
+import 'primitives/image_upload.dart';
+import 'primitives/text_view.dart';
+import 'primitives/log_view.dart';
+import 'primitives/input.dart';
+import 'primitives/button.dart';
+import 'primitives/chat_view_basic.dart';
+import 'primitives/mcp_structured_log.dart';
+import 'primitives/streaming_text_view.dart';
+import 'primitives/code_view.dart';
+import 'primitives/html_view.dart';
 
 // Map backend type strings to frontend widget implementations
 final Map<String, Widget Function(Map<String, dynamic> primitive, {
@@ -19,6 +35,12 @@ final Map<String, Widget Function(Map<String, dynamic> primitive, {
   'StreamingTextView': (primitive, {sendAction, onValueChange, onAction}) => StreamingTextViewWidget(primitive: primitive),
   'CodeView': (primitive, {sendAction, onValueChange, onAction}) => CodeViewWidget(primitive: primitive),
   'HtmlView': (primitive, {sendAction, onValueChange, onAction}) => HtmlViewWidget(primitive: primitive),
+  'AudioUpload': (primitive, {sendAction, onValueChange, onAction}) => AudioUploadWidget(primitive: primitive,onValueChange: onValueChange as void Function(String?)?,),
+  'Card': (primitive, {sendAction, onValueChange, onAction}) => CardWidget(primitive: primitive, sendAction: sendAction,),
+  'Checkbox': (primitive, {sendAction, onValueChange, onAction}) => CheckboxWidget(primitive: primitive, onValueChange: onValueChange as void Function(String?)?, onAction: onAction,),
+  'FileUploadField': (primitive, {sendAction, onValueChange, onAction}) => FileUploadFieldWidget(primitive: primitive, onValueChange: onValueChange as void Function(String?)?,),
+  'Icon': (primitive, {sendAction, onValueChange, onAction}) => IconWidget(primitive: primitive,),
+  'ImageUpload': (primitive, {sendAction, onValueChange, onAction}) => ImageUploadWidget(primitive: primitive,onValueChange: onValueChange as void Function(String?)?,),
 };
 
 class UnknownPrimitiveWidget extends StatelessWidget {
@@ -31,7 +53,7 @@ class UnknownPrimitiveWidget extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.red, width: 2, style: BorderStyle.solid),
-        color: Colors.red.withOpacity(0.05),
+        color: Colors.red.withValues(alpha: 0.05),
       ),
       padding: const EdgeInsets.all(10),
       margin: const EdgeInsets.all(5),
@@ -107,7 +129,7 @@ class _DynamicRendererState extends State<DynamicRenderer> {
     }
   }
 
-  void _handleValueChange(String value) {
+  void _handleValueChange(String? value) {
     setState(() {
       _contentOverrides['content'] = value;
     });

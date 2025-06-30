@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:logger/logger.dart';
 import '../config.dart';
 
 class AuthProfile {
@@ -22,6 +23,8 @@ class AuthProfile {
 }
 
 class AuthProvider extends ChangeNotifier {
+  final _logger = Logger();
+
   AuthProfile _profile = AuthProfile.initial();
   String? _token;
   bool _isAuthenticated = false;
@@ -45,18 +48,21 @@ class AuthProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      // Real API call to backend for authentication
       final response = await http.post(
         Uri.parse('${AppConfig.apiBaseUrl}/auth/login'),
         headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
         body: jsonEncode({'username': username, 'password': password}),
       );
-      print('[AuthProvider] Login response status: ${response.statusCode}');
-      print('[AuthProvider] Login response body: ${response.body}');
+
+      // Use the logger instead of print
+      _logger.i('[AuthProvider] Login response status: ${response.statusCode}');
+      _logger.d('[AuthProvider] Login response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        print('[AuthProvider] Parsed login data: ${data.toString()}');
-        print('[AuthProvider] Received access_token: ${data['access_token']}');
+        _logger.d('[AuthProvider] Parsed login data: ${data.toString()}');
+        _logger.d('[AuthProvider] Received access_token: ${data['access_token']}');
+        
         _profile = AuthProfile(
           id: data['user']?['id']?.toString() ?? '',
           username: data['user']?['username'] ?? username,
@@ -75,8 +81,8 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return false;
       }
-    } catch (e) {
-      print('[AuthProvider] Login error: ${e.toString()}');
+    } catch (e, s) { // Also capture the stack trace for better error logging
+      _logger.e('[AuthProvider] Login error', error: e, stackTrace: s);
       _error = 'Login error: $e';
       _isLoading = false;
       notifyListeners();
@@ -89,5 +95,6 @@ class AuthProvider extends ChangeNotifier {
     _token = null;
     _isAuthenticated = false;
     notifyListeners();
+    _logger.i('User logged out');
   }
 }
