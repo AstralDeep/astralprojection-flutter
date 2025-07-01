@@ -1,26 +1,14 @@
+// app.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../components/navigation/nav_bar.dart';
-import '../components/common/loading_spinner.dart';
-import '../components/auth/login_page.dart';
-import '../components/workspace/workspace_layout.dart';
-import 'state/auth_provider.dart';
-import 'state/project_provider.dart';
-import 'state/web_socket_provider.dart';
-import 'components/theme/app_theme.dart';
-
-// TODO: Add global error handling and user-friendly error UI.
-// TODO: Move colors and text styles to a central theme file.
-// TODO: Add localization (l10n) support for multi-language UI.
-// TODO: Consider more robust state management if app grows (e.g., Riverpod, Bloc).
-
-void main() {
-  FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.presentError(details);
-    // TODO: Optionally report errors to a logging service.
-  };
-  runApp(const App());
-}
+import 'components/navigation/nav_bar.dart'; // Assuming this path is correct
+import 'components/common/loading_spinner.dart'; // Assuming this path is correct
+import 'components/auth/login_page.dart'; // Assuming this path is correct
+import 'components/workspace/workspace_layout.dart'; // Assuming this path is correct
+import 'state/auth_provider.dart'; // Assuming this path is correct
+import 'state/project_provider.dart'; // Assuming this path is correct
+import 'state/web_socket_provider.dart'; // Assuming this path is correct
+import 'components/theme/app_theme.dart'; // Assuming this path is correct
 
 class App extends StatefulWidget {
   const App({super.key});
