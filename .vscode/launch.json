@@ -12,10 +12,16 @@
             "webRoot": "${workspaceFolder}"
         },
         {
-            "name": "astralprojection-flutter",
+            "name": "chrome",
             "request": "launch",
             "type": "dart",
             "args": ["-d", "chrome", "--web-port", "3000"]
+        },
+        {
+            "name": "androidphone",
+            "request": "launch",
+            "type": "dart",
+            "args": ["-d", "emulator-5554", "--web-port", "3000"]
         },
         {
             "name": "astralprojection-flutter (profile mode)",
