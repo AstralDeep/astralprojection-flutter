@@ -60,25 +60,6 @@ class ProjectProvider extends ChangeNotifier {
     }
   }
 
-  /// Loads projects from a simulated source and updates the state.
-  Future<void> loadProjects() async {
-    if (_isLoading) return;
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-    await Future.delayed(const Duration(seconds: 1)); // TODO: Replace with real API call
-    // Simulate projects
-    _projects = [
-      Project(id: '1', name: 'Demo Project'),
-      Project(id: '2', name: 'Second Project'),
-    ];
-    _isLoading = false;
-    if (_currentProject == null && _projects.isNotEmpty) {
-      _setCurrentProjectAndResetState(_projects[0]);
-    }
-    notifyListeners();
-  }
-
   /// Loads projects from the backend using the provided token.
   Future<void> loadProjectsFromBackend(String token) async {
     if (_isLoading) return;

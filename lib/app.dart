@@ -7,6 +7,7 @@ import '../components/workspace/workspace_layout.dart';
 import 'state/auth_provider.dart';
 import 'state/project_provider.dart';
 import 'state/web_socket_provider.dart';
+import 'components/theme/app_theme.dart';
 
 // TODO: Add global error handling and user-friendly error UI.
 // TODO: Move colors and text styles to a central theme file.
@@ -41,9 +42,9 @@ class _AppState extends State<App> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFF5F7FA), // slightly off-white gray
-      ),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       home: MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => AuthProvider()),

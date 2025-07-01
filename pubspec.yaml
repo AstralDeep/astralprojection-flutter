@@ -24,6 +24,7 @@ dependencies:
   mime: ^2.0.0
   logger: ^2.6.0
   google_fonts: ^6.2.1
+  shared_preferences: ^2.5.3
 
 
 dev_dependencies:
