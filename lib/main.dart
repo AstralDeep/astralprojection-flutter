@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'app.dart';
 import 'dart:async';
 import 'package:logger/logger.dart';
-import 'components/theme/app_theme.dart'; // Keep this if AppTheme is used in app.dart's MaterialApp
 
 void main() {
   final logger = Logger();
