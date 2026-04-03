@@ -1,237 +1,105 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/web_socket_provider.dart';
+import 'common/placeholder_widget.dart';
 
-import 'primitives/stack_layout.dart';
-import 'primitives/audio_upload.dart';
-import 'primitives/card.dart';
-import 'primitives/checkbox.dart';
-import 'primitives/file_upload.dart';
-import 'primitives/icon.dart';
-import 'primitives/image_upload.dart';
-import 'primitives/text_view.dart';
-import 'primitives/log_view.dart';
-import 'primitives/input.dart';
-import 'primitives/button.dart';
-import 'primitives/chat_view_basic.dart';
-import 'primitives/mcp_structured_log.dart';
-import 'primitives/streaming_text_view.dart';
-import 'primitives/code_view.dart';
-import 'primitives/html_view.dart';
+// Primitive widget imports
+import 'primitives/container_widget.dart';
+import 'primitives/text_widget.dart';
+import 'primitives/button_widget.dart';
+import 'primitives/input_widget.dart';
+import 'primitives/card_widget.dart';
+import 'primitives/table_widget.dart';
+import 'primitives/list_widget.dart';
+import 'primitives/alert_widget.dart';
+import 'primitives/progress_widget.dart';
+import 'primitives/metric_widget.dart';
+import 'primitives/code_widget.dart';
+import 'primitives/image_widget.dart';
+import 'primitives/grid_widget.dart';
+import 'primitives/tabs_widget.dart';
+import 'primitives/divider_widget.dart';
+import 'primitives/collapsible_widget.dart';
+import 'primitives/bar_chart_widget.dart';
+import 'primitives/line_chart_widget.dart';
+import 'primitives/pie_chart_widget.dart';
+import 'primitives/plotly_chart_widget.dart';
+import 'primitives/color_picker_widget.dart';
+import 'primitives/file_upload_widget.dart';
+import 'primitives/file_download_widget.dart';
 
-// Map backend type strings to frontend widget implementations
-final Map<String, Widget Function(Map<String, dynamic> primitive, {
-  void Function(Map<String, dynamic>)? sendAction,
-  void Function(String)? onValueChange,
-  void Function()? onAction,
-})> primitiveMap = {
-  'StackLayout': (primitive, {sendAction, onValueChange, onAction}) => StackLayoutWidget(primitive: primitive, sendAction: sendAction),
-  'TextView': (primitive, {sendAction, onValueChange, onAction}) => TextViewWidget(primitive: primitive),
-  'LogView': (primitive, {sendAction, onValueChange, onAction}) => LogViewWidget(primitive: primitive),
-  'InputField': (primitive, {sendAction, onValueChange, onAction}) => InputFieldWidget(primitive: primitive, onValueChange: onValueChange, onAction: onAction),
-  'Button': (primitive, {sendAction, onValueChange, onAction}) => ButtonWidget(primitive: primitive, onAction: onAction),
-  'ChatViewBasic': (primitive, {sendAction, onValueChange, onAction}) => ChatViewBasicWidget(primitive: primitive),
-  'McpStructuredLogView': (primitive, {sendAction, onValueChange, onAction}) => McpStructuredLogViewWidget(primitive: primitive),
-  'StreamingTextView': (primitive, {sendAction, onValueChange, onAction}) => StreamingTextViewWidget(primitive: primitive),
-  'CodeView': (primitive, {sendAction, onValueChange, onAction}) => CodeViewWidget(primitive: primitive),
-  'HtmlView': (primitive, {sendAction, onValueChange, onAction}) => HtmlViewWidget(primitive: primitive),
-  'AudioUpload': (primitive, {sendAction, onValueChange, onAction}) => AudioUploadWidget(primitive: primitive,onValueChange: onValueChange as void Function(String?)?,),
-  'Card': (primitive, {sendAction, onValueChange, onAction}) => CardWidget(primitive: primitive, sendAction: sendAction,),
-  'Checkbox': (primitive, {sendAction, onValueChange, onAction}) => CheckboxWidget(primitive: primitive, onValueChange: onValueChange as void Function(String?)?, onAction: onAction,),
-  'FileUploadField': (primitive, {sendAction, onValueChange, onAction}) => FileUploadFieldWidget(primitive: primitive, onValueChange: onValueChange as void Function(String?)?,),
-  'Icon': (primitive, {sendAction, onValueChange, onAction}) => IconWidget(primitive: primitive,),
-  'ImageUpload': (primitive, {sendAction, onValueChange, onAction}) => ImageUploadWidget(primitive: primitive,onValueChange: onValueChange as void Function(String?)?,),
+/// Maps AstralBody backend snake_case component types to Flutter widget builders.
+///
+/// Each builder receives the raw component Map from the backend and a sendEvent
+/// callback for dispatching ui_event messages.
+typedef PrimitiveBuilder = Widget Function(
+  Map<String, dynamic> component,
+  void Function(String action, Map<String, dynamic> payload) sendEvent,
+);
+
+final Map<String, PrimitiveBuilder> primitiveMap = {
+  'container': (c, s) => ContainerWidget(component: c, sendEvent: s),
+  'text': (c, s) => TextWidget(component: c),
+  'button': (c, s) => ButtonWidget(component: c, sendEvent: s),
+  'input': (c, s) => InputWidget(component: c, sendEvent: s),
+  'card': (c, s) => CardWidget(component: c, sendEvent: s),
+  'table': (c, s) => TableWidget(component: c, sendEvent: s),
+  'list': (c, s) => ListWidget(component: c),
+  'alert': (c, s) => AlertWidget(component: c),
+  'progress': (c, s) => ProgressWidget(component: c),
+  'metric': (c, s) => MetricWidget(component: c),
+  'code': (c, s) => CodeWidget(component: c),
+  'image': (c, s) => ImageWidget(component: c),
+  'grid': (c, s) => GridWidget(component: c, sendEvent: s),
+  'tabs': (c, s) => TabsWidget(component: c, sendEvent: s),
+  'divider': (c, s) => DividerWidget(component: c),
+  'collapsible': (c, s) => CollapsibleWidget(component: c, sendEvent: s),
+  'bar_chart': (c, s) => BarChartWidget(component: c),
+  'line_chart': (c, s) => LineChartWidget(component: c),
+  'pie_chart': (c, s) => PieChartWidget(component: c),
+  'plotly_chart': (c, s) => PlotlyChartWidget(component: c),
+  'color_picker': (c, s) => ColorPickerWidget(component: c, sendEvent: s),
+  'file_upload': (c, s) => FileUploadWidget(component: c, sendEvent: s),
+  'file_download': (c, s) => FileDownloadWidget(component: c, sendEvent: s),
 };
 
-class UnknownPrimitiveWidget extends StatelessWidget {
-  final String id;
-  final String type;
-  final String? gridArea;
-  const UnknownPrimitiveWidget({required this.id, required this.type, this.gridArea, super.key});
+/// The list of all supported SDUI component types, sent in register_ui.
+List<String> get supportedCapabilities => primitiveMap.keys.toList();
+
+/// Recursively renders an SDUI component tree.
+class DynamicRenderer extends StatelessWidget {
+  final Map<String, dynamic> component;
+
+  const DynamicRenderer({super.key, required this.component});
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.red, width: 2, style: BorderStyle.solid),
-        color: Colors.red.withValues(alpha: 0.05),
-      ),
-      padding: const EdgeInsets.all(10),
-      margin: const EdgeInsets.all(5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Unknown Primitive Type: "$type"', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-          Text('ID: $id', style: const TextStyle(color: Colors.red)),
-        ],
-      ),
-    );
-  }
-}
-
-// --- Helper Functions ---
-Map<String, dynamic>? findPrimitiveById(Map<String, dynamic>? node, String? targetId) {
-  if (node == null || targetId == null) return null;
-  if (node['id'] == targetId) return node;
-  if (node['children'] is List) {
-    for (final child in node['children']) {
-      if (child is Map<String, dynamic>) {
-        final found = findPrimitiveById(child, targetId);
-        if (found != null) return found;
-      }
-    }
-  }
-  return null;
-}
-
-Map<String, dynamic>? findPrimitiveByBinding(Map<String, dynamic>? node, String? targetBinding) {
-  if (node == null || targetBinding == null) return null;
-  if (node['updateBinding'] == targetBinding) return node;
-  if (node['children'] is List) {
-    for (final child in node['children']) {
-      if (child is Map<String, dynamic>) {
-        final found = findPrimitiveByBinding(child, targetBinding);
-        if (found != null) return found;
-      }
-    }
-  }
-  return null;
-}
-// --- End Helper Functions ---
-
-class DynamicRenderer extends StatefulWidget {
-  final Map<String, dynamic> primitive;
-  final void Function(Map<String, dynamic> message)? sendAction;
-  const DynamicRenderer({super.key, required this.primitive, this.sendAction});
-  @override
-  State<DynamicRenderer> createState() => _DynamicRendererState();
-}
-
-class _DynamicRendererState extends State<DynamicRenderer> {
-  final Map<String, dynamic> _contentOverrides = {};
-  TextEditingController? _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.primitive['type'] == 'InputField') {
-      _controller = TextEditingController(text: widget.primitive['content'] ?? '');
-    }
-  }
-
-  @override
-  void didUpdateWidget(DynamicRenderer oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.primitive['type'] == 'InputField') {
-      final newText = widget.primitive['content'] ?? '';
-      if (_controller != null && _controller!.text != newText) {
-        _controller!.text = newText;
-      }
-    }
-  }
-
-  void _handleValueChange(String? value) {
-    setState(() {
-      _contentOverrides['content'] = value;
-    });
-  }
-
-  void _handleAction() {
-    final primitive = widget.primitive;
-    final actionId = primitive['actionId'] ?? primitive['id'];
+    final type = component['type'] as String? ?? '';
+    final builder = primitiveMap[type];
     final wsProvider = Provider.of<WebSocketProvider>(context, listen: false);
 
-    String value = primitive['content'] ?? '';
-    if (_controller != null) {
-      value = _controller!.text;
-    } else if (_contentOverrides.containsKey('content')) {
-      value = _contentOverrides['content'];
+    if (builder != null) {
+      return builder(component, wsProvider.sendEvent);
     }
 
-    final config = primitive['config'] as Map<String, dynamic>? ?? {};
-    final valueSourceElementIds = config['valueSourceElementIds'] as List<dynamic>?;
-    Map<String, dynamic> valuesFromSources = {};
-    if (valueSourceElementIds != null && valueSourceElementIds.isNotEmpty) {
-      for (final id in valueSourceElementIds) {
-        String sourceValue = '';
-        if (id == primitive['id'] && _controller != null) {
-          sourceValue = _controller!.text;
-        } else {
-          final root = wsProvider.uiState != null ? wsProvider.uiState!['rootElement'] : null;
-          if (root != null) {
-            final found = wsProvider.findPrimitiveById(root, id);
-            if (found != null && found['content'] != null) {
-              sourceValue = found['content'].toString();
-            }
-          }
-        }
-        valuesFromSources[id.toString()] = sourceValue;
-      }
-    }
-
-    String argumentKey = 'value';
-    if (config['argumentKey'] is String) {
-      argumentKey = config['argumentKey'];
-    } else if (primitive['argumentKey'] is String) {
-      argumentKey = primitive['argumentKey'];
-    }
-    if ((actionId == 'chatbot_query' || actionId == 'process_user_query' || 
-        actionId.toString().contains('query')) && argumentKey != 'query') {
-      argumentKey = 'query';
-    }
-
-    String valueToSend = value;
-    if (valueSourceElementIds != null && valueSourceElementIds.isNotEmpty) {
-      for (final id in valueSourceElementIds) {
-        final idStr = id.toString();
-        if (idStr.contains('input') || idStr.contains('chat') || idStr.contains('query')) {
-          if (valuesFromSources.containsKey(idStr) && valuesFromSources[idStr].toString().isNotEmpty) {
-            valueToSend = valuesFromSources[idStr].toString();
-            break;
-          }
-        }
-      }
-    }
-
-    final frontendActions = config['frontendActions'] as List<dynamic>?;
-    Map<String, dynamic> valuesForBackend = valuesFromSources.isNotEmpty ? valuesFromSources : {primitive['id']: valueToSend};
-    if (frontendActions != null && frontendActions.isNotEmpty) {
-      wsProvider.performFrontendActions(frontendActions, valuesForBackend);
-    }
-
-    if (widget.sendAction != null) {
-      widget.sendAction!({
-        'type': 'ui_action',
-        'payload': {
-          'actionId': actionId,
-          'sourceElementId': primitive['id'],
-          'arguments': {argumentKey: valueToSend}
-        }
-      });
-    }
+    return PlaceholderWidget(
+      componentType: type,
+      componentId: component['id'] as String?,
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final type = widget.primitive['type'] ?? 'Unknown';
-    final id = widget.primitive['id'] ?? '';
-    final widgetBuilder = primitiveMap[type];
-    final primitiveWithOverrides = Map<String, dynamic>.from(widget.primitive)..addAll(_contentOverrides);
-    if (widgetBuilder != null) {
-      if (type == 'InputField') {
-        return InputFieldWidget(
-          primitive: primitiveWithOverrides,
-          onValueChange: _handleValueChange,
-          onAction: _handleAction,
-          key: ValueKey(id),
-        );
-      }
-      return widgetBuilder(
-        primitiveWithOverrides,
-        sendAction: widget.sendAction,
-        onValueChange: _handleValueChange,
-        onAction: _handleAction,
-      );
+  /// Render a list of component maps as a column of DynamicRenderers.
+  static Widget renderChildren(List<dynamic> children) {
+    if (children.isEmpty) return const SizedBox.shrink();
+    if (children.length == 1 && children.first is Map<String, dynamic>) {
+      return DynamicRenderer(component: children.first as Map<String, dynamic>);
     }
-    return UnknownPrimitiveWidget(id: id.toString(), type: type.toString());
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final child in children)
+          if (child is Map<String, dynamic>) DynamicRenderer(component: child),
+      ],
+    );
   }
 }

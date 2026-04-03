@@ -11,6 +11,7 @@ class _UKColors {
   static const Color lightBackground = Color(0xFFF5F7FA);
   static const Color darkBackground = Color(0xFF121212);
   static const Color darkSurface = Color(0xFF1E1E1E);
+  // ignore: unused_field, may be used for future theme elements
   static const Color grey = Color(0xFF8E8E8E);
 }
 
@@ -52,7 +53,7 @@ class AppTheme {
       brightness: Brightness.light,
     ),
     appBarTheme: const AppBarTheme(
-      color: _UKColors.wildcatBlue,
+      backgroundColor: _UKColors.wildcatBlue,
       elevation: 0,
       iconTheme: IconThemeData(color: _UKColors.lightText),
     ),
@@ -88,7 +89,7 @@ class AppTheme {
       brightness: Brightness.dark,
     ),
     appBarTheme: const AppBarTheme(
-      color: _UKColors.midnight,
+      backgroundColor: _UKColors.midnight,
       elevation: 0,
       iconTheme: IconThemeData(color: _UKColors.lightText),
     ),

@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../common/loading_spinner.dart';
 import '../dynamic_renderer.dart';
 import '../../state/project_provider.dart';
 import '../../state/auth_provider.dart';
 import '../../state/web_socket_provider.dart';
+import '../../state/device_profile_provider.dart';
+import '../../state/theme_provider.dart';
 import 'project_dropdown.dart';
-import '../../config.dart';
 
+/// Main workspace that renders the SDUI component tree from the backend.
+///
+/// Manages WebSocket connection lifecycle, shows cached SDUI tree on restart,
+/// and wires theme updates from the backend to ThemeProvider.
 class WorkspaceLayout extends StatefulWidget {
   final String? projectName;
   final String wsStatus;
@@ -27,140 +31,196 @@ class WorkspaceLayout extends StatefulWidget {
 }
 
 class _WorkspaceLayoutState extends State<WorkspaceLayout> {
+  bool _wsConnectScheduled = false;
+  final TextEditingController _chatController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
-    // Use addPostFrameCallback to ensure the context is available
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final projectProvider = Provider.of<ProjectProvider>(context, listen: false);
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
-      // Load projects only if they are not already loaded or being loaded
-      if (projectProvider.projects.isEmpty && !projectProvider.isLoading && authProvider.token != null) {
-        projectProvider.loadProjectsFromBackend(authProvider.token!);
-      }
+      _loadProjects();
+      _wireThemeCallback();
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final projectProvider = Provider.of<ProjectProvider>(context);
-    final authProvider = Provider.of<AuthProvider>(context);
-    final wsProvider = Provider.of<WebSocketProvider>(context);
-    final hasProject = projectProvider.currentProject != null;
-    final hasRootElement = wsProvider.uiState != null && wsProvider.uiState!['rootElement'] != null;
+  void _loadProjects() {
+    final projectProvider =
+        Provider.of<ProjectProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (projectProvider.projects.isEmpty &&
+        !projectProvider.isLoading &&
+        authProvider.token != null) {
+      projectProvider.loadProjectsFromBackend(authProvider.token!);
+    }
+  }
 
-    // WebSocket connection logic
+  void _wireThemeCallback() {
+    final ws = Provider.of<WebSocketProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    ws.onThemeReceived = (config) => themeProvider.applyBackendTheme(config);
+  }
+
+  @override
+  void dispose() {
+    _chatController.dispose();
+    super.dispose();
+  }
+
+  /// Send a chat message via WebSocket (T065).
+  void _sendChatMessage() {
+    final text = _chatController.text.trim();
+    if (text.isEmpty) return;
+    final wsProvider = Provider.of<WebSocketProvider>(context, listen: false);
+    wsProvider.sendEvent('chat_message', {'text': text, 'chat_id': 'default'});
+    _chatController.clear();
+  }
+
+  /// Send a save_component action (T066).
+  void saveComponent(Map<String, dynamic> componentData) {
+    final wsProvider = Provider.of<WebSocketProvider>(context, listen: false);
+    wsProvider.sendEvent('save_component', componentData);
+  }
+
+  /// Send a combine_components action (T066).
+  void combineComponents(List<String> componentIds, {String? targetId}) {
+    final wsProvider = Provider.of<WebSocketProvider>(context, listen: false);
+    wsProvider.sendEvent('combine_components', {
+      'component_ids': componentIds,
+      if (targetId != null) 'target_id': targetId,
+    });
+  }
+
+  void _connectIfNeeded() {
+    final projectProvider =
+        Provider.of<ProjectProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final wsProvider = Provider.of<WebSocketProvider>(context, listen: false);
+    final deviceProfile =
+        Provider.of<DeviceProfileProvider>(context, listen: false);
+    final hasProject = projectProvider.currentProject != null;
+
     if (hasProject && authProvider.token != null && !wsProvider.connected) {
-      final wsUrl = '${AppConfig.wsBaseUrl}/stream/mcp:${projectProvider.currentProject!.id}?token=${authProvider.token}';
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        wsProvider.connect(url: wsUrl);
-      });
+      if (!_wsConnectScheduled) {
+        _wsConnectScheduled = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _wsConnectScheduled = false;
+          wsProvider.connect(
+            token: authProvider.token!,
+            device: deviceProfile.toDeviceMap(),
+            capabilities: supportedCapabilities,
+            projectId: projectProvider.currentProject!.id,
+          );
+        });
+      }
     }
     if (!hasProject && wsProvider.connected) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         wsProvider.disconnect();
       });
     }
+  }
 
+  @override
+  Widget build(BuildContext context) {
+    final projectProvider = Provider.of<ProjectProvider>(context);
+    final wsProvider = Provider.of<WebSocketProvider>(context);
+    final hasProject = projectProvider.currentProject != null;
+
+    _connectIfNeeded();
+
+    // No project selected — show project dropdown
     if (!hasProject) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ProjectDropdown(),
-              const SizedBox(height: 32),
-              Text(
-                'Select a project to begin.',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontStyle: FontStyle.italic,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        ),
-        backgroundColor: const Color(0xFFF7F9FB),
-      );
-    }
-
-    Widget content;
-    if (wsProvider.connected == false && hasProject) {
-      if (wsProvider.error != null) {
-        content = Center(
-          child: Text('WebSocket error: ${wsProvider.error}', style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.red)),
-        );
-      } else {
-        content = LoadingSpinner(message: 'Connecting to WebSocket...');
-      }
-    } else if (wsProvider.connected && !hasRootElement) {
-      content = const LoadingSpinner(message: 'Waiting for UI definition from server...');
-    } else if (wsProvider.connected && hasRootElement) {
-      content = DynamicRenderer(
-        primitive: wsProvider.uiState!['rootElement'],
-        sendAction: (msg) {
-          wsProvider.send(msg);
-        },
-      );
-    } else {
-      // This else block might be unreachable now, but kept for safety.
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            'AI Interface',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF4A5CF0),
-            ),
-          ),
-          backgroundColor: Colors.white,
-          elevation: 1,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.settings, color: Colors.grey),
-              onPressed: () {},
-              tooltip: 'Settings',
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: CircleAvatar(
-                backgroundColor: Colors.grey.shade200,
-                child: const Text(
-                  'P',
-                  style: TextStyle(color: Colors.black),
-                ),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const ProjectDropdown(),
+            const SizedBox(height: 32),
+            Text(
+              'Select a project to begin.',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontStyle: FontStyle.italic,
+                fontSize: 16,
               ),
             ),
           ],
         ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ProjectDropdown(),
-              const SizedBox(height: 32),
-              Text(
-                'Select a project to begin.',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontStyle: FontStyle.italic,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        ),
-        backgroundColor: const Color(0xFFF7F9FB),
       );
     }
-    
 
-    // Wrap the content in a SingleChildScrollView to prevent overflow.
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(10.0),
-      child: content,
+    // Connection error
+    if (!wsProvider.connected && wsProvider.error != null) {
+      return Center(
+        child: Text(
+          'WebSocket error: ${wsProvider.error}',
+          style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.red),
+        ),
+      );
+    }
+
+    // Show SDUI tree (live or cached) with chat input bar at the bottom.
+    if (wsProvider.components.isNotEmpty) {
+      return Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(10.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final component in wsProvider.components)
+                    DynamicRenderer(component: component),
+                ],
+              ),
+            ),
+          ),
+          _buildChatInputBar(),
+        ],
+      );
+    }
+
+    // Connecting — the LoadingOverlay in app.dart handles the visual
+    return const SizedBox.shrink();
+  }
+
+  /// Chat input bar pinned to the bottom of the workspace (T065).
+  Widget _buildChatInputBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          top: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _chatController,
+                decoration: const InputDecoration(
+                  hintText: 'Type a message...',
+                  border: OutlineInputBorder(),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                  isDense: true,
+                ),
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _sendChatMessage(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.send),
+              onPressed: _sendChatMessage,
+              tooltip: 'Send message',
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -1,201 +1,133 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
 
-/// Provides WebSocket connection and UI state management for dynamic rendering.
+import '../config.dart';
+
+/// WebSocket provider implementing the AstralBody protocol:
+/// register_ui, ui_render, ui_update, ui_append, ui_event.
+///
+/// Also handles SDUI tree disk persistence (T014) — saves last rendered
+/// component tree to SharedPreferences so the cached UI can be shown
+/// while reconnecting on app restart.
 class WebSocketProvider extends ChangeNotifier {
+  final _logger = Logger();
+
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
   bool _connected = false;
-  String? _lastMessage;
+  String? _sessionId;
   String? _error;
-  Map<String, dynamic>? _uiState;
+
+  /// The current SDUI component tree (list of top-level components).
+  List<Map<String, dynamic>> _components = [];
+
+  /// Whether we have received at least one ui_render from the backend.
+  bool _hasReceivedRender = false;
+
+  /// Chat messages appended via ui_append.
+  final List<Map<String, dynamic>> _chatMessages = [];
+
+  // --- Reconnect state (T063/T064) ---
+  Timer? _reconnectTimer;
+  int _reconnectAttempt = 0;
+  bool _reconnectEnabled = true;
+
+  /// Maximum reconnect delay in seconds.
+  static const int maxReconnectDelaySec = 30;
+
+  /// Last connection parameters, stored so we can auto-reconnect.
+  String? _lastToken;
+  Map<String, dynamic>? _lastDevice;
+  List<String>? _lastCapabilities;
+  String? _lastProjectId;
 
   bool get connected => _connected;
-  String? get lastMessage => _lastMessage;
+  String? get sessionId => _sessionId;
   String? get error => _error;
-  Map<String, dynamic>? get uiState => _uiState;
+  List<Map<String, dynamic>> get components => _components;
+  bool get hasReceivedRender => _hasReceivedRender;
+  List<Map<String, dynamic>> get chatMessages =>
+      List.unmodifiable(_chatMessages);
 
-  /// Updates the content of a primitive in the UI state.
-  void _updatePrimitiveContent(Map<String, dynamic> update) {
-    if (_uiState == null || _uiState!['rootElement'] == null) return;
-    final targetId = update['targetId'];
-    final targetBinding = update['targetBinding'];
-    final content = update['content'];
-    final updateType = update['updateType'] ?? 'replace';
-    void updateContent(Map<String, dynamic> node) {
-      if ((targetId != null && node['id'] == targetId) ||
-          (targetBinding != null && node['updateBinding'] == targetBinding)) {
-        if (updateType == 'append') {
-          if (node['content'] is String) {
-            // For streaming text, append as string
-            node['content'] = (node['content'] ?? '').toString() + (content ?? '').toString();
-          } else if (node['content'] is List) {
-            // For chat/log views, append to list
-            if (content is List) {
-              node['content'].addAll(content);
-            } else if (content != null) {
-              node['content'].add(content);
-            }
-          } else if (node['content'] == null) {
-            // If content is null, initialize as list or string
-            if (content is List) {
-              node['content'] = List.from(content);
-            } else if (content is String) {
-              node['content'] = content;
-            } else {
-              node['content'] = [content];
-            }
-          } else {
-            // Convert non-list, non-string content to list and append
-            node['content'] = [node['content'], content];
-          }
-        } else {
-          node['content'] = content;
-        }
-      } else if (node['children'] is List) {
-        for (final child in node['children']) {
-          if (child is Map<String, dynamic>) updateContent(child);
-        }
-      }
-    }
-    updateContent(_uiState!['rootElement']);
-    notifyListeners();
+  /// Current reconnect attempt (exposed for testing).
+  int get reconnectAttempt => _reconnectAttempt;
+
+  @visibleForTesting
+  set reconnectAttemptForTest(int value) => _reconnectAttempt = value;
+
+  /// Whether auto-reconnect is enabled.
+  bool get reconnectEnabled => _reconnectEnabled;
+  set reconnectEnabled(bool value) => _reconnectEnabled = value;
+
+  /// Connect to the AstralBody backend WebSocket.
+  void connect({
+    required String token,
+    required Map<String, dynamic> device,
+    required List<String> capabilities,
+    String? projectId,
+  }) {
+    disconnect(triggeredByUser: true);
+
+    // Store params for auto-reconnect (T063).
+    _lastToken = token;
+    _lastDevice = device;
+    _lastCapabilities = capabilities;
+    _lastProjectId = projectId;
+    _reconnectAttempt = 0;
+
+    _connectInternal(
+      token: token,
+      device: device,
+      capabilities: capabilities,
+      projectId: projectId,
+    );
   }
 
-  /// Finds a primitive by its ID in the UI state tree.
-  Map<String, dynamic>? findPrimitiveById(Map<String, dynamic> node, String targetId) {
-    if (node['id'] == targetId) return node;
-    if (node['children'] is List) {
-      for (final child in node['children']) {
-        if (child is Map<String, dynamic>) {
-          final found = findPrimitiveById(child, targetId);
-          if (found != null) return found;
-        }
-      }
-    }
-    return null;
-  }
-
-  /// Finds a primitive by its updateBinding in the UI state tree.
-  Map<String, dynamic>? findPrimitiveByBinding(Map<String, dynamic> node, String targetBinding) {
-    if (node['updateBinding'] == targetBinding) return node;
-    if (node['children'] is List) {
-      for (final child in node['children']) {
-        if (child is Map<String, dynamic>) {
-          final found = findPrimitiveByBinding(child, targetBinding);
-          if (found != null) return found;
-        }
-      }
-    }
-    return null;
-  }
-
-  /// Performs frontend actions such as echoToView and clearElement.
-  void performFrontendActions(List<dynamic> frontendActions, Map<String, dynamic> valuesForBackend) {
-    if (_uiState == null || _uiState!['rootElement'] == null) return;
-    final root = _uiState!['rootElement'];
-    for (final action in frontendActions) {
-      if (action is! Map<String, dynamic>) continue;
-      switch (action['type']) {
-        case 'clearElement':
-          final targetId = action['targetElementId'];
-          if (targetId != null) {
-            final target = findPrimitiveById(root, targetId);
-            if (target != null) {
-              target['content'] = '';
-            }
-          }
-          break;
-        case 'echoToView':
-          final sourceId = action['sourceElementId'];
-          final targetBinding = action['targetBinding'];
-          final role = action['role'] ?? 'user';
-          if (sourceId != null && targetBinding != null) {
-            final textToEcho = valuesForBackend[sourceId]?.toString() ?? '';
-            if (textToEcho.trim().isEmpty) continue;
-            final targetView = findPrimitiveByBinding(root, targetBinding);
-            if (targetView != null) {
-              final msg = {'role': role, 'text': textToEcho, 'uniqueId': DateTime.now().millisecondsSinceEpoch.toString()};
-              if (targetView['content'] is List) {
-                targetView['content'].add(msg);
-              } else if (targetView['content'] == null) {
-                targetView['content'] = [msg];
-              } else {
-                targetView['content'] = [targetView['content'], msg];
-              }
-            }
-          }
-          break;
-        default:
-          // Unknown frontend action
-          break;
-      }
-    }
-    notifyListeners();
-  }
-
-  /// Establishes a WebSocket connection to the given URL.
-  /// Optionally, a JWT can be provided for authentication.
-  void connect({required String url, String? jwt}) {
-    disconnect();
+  /// Internal connect used by both initial connect and auto-reconnect.
+  void _connectInternal({
+    required String token,
+    required Map<String, dynamic> device,
+    required List<String> capabilities,
+    String? projectId,
+  }) {
     try {
-      _channel = WebSocketChannel.connect(
-        Uri.parse(url),
-      );
+      final wsUrl = projectId != null
+          ? '${AppConfig.wsUrl}/stream/mcp:$projectId?token=$token'
+          : '${AppConfig.wsUrl}?token=$token';
+
+      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
       _connected = true;
       _error = null;
-      // TODO: Add user-friendly error handling for WebSocket disconnects and failures.
-      // Send register_capabilities message immediately after connecting
-      final registerMsg = jsonEncode({
-        'type': 'register_capabilities',
-        'payload': {
-          'supported_primitives': [
-            'StackLayout',
-            'ChatViewBasic',
-            'InputField',
-            'Button',
-            'TextView',
-            'LogView',
-            'McpStructuredLogView',
-            'StreamingTextView',
-            'CodeView',
-            'HtmlView',
-          ]
-        }
-      });
-      _channel!.sink.add(registerMsg);
-      // Only send JWT for authentication if provided (legacy, not used with query param)
-      if (jwt != null && jwt.isNotEmpty) {
-        _channel!.sink.add(jsonEncode({'type': 'auth', 'token': jwt}));
-      }
+
+      // Send register_ui immediately, preserving session_id across reconnects.
+      final registerMsg = {
+        'type': 'register_ui',
+        'capabilities': capabilities,
+        'token': token,
+        'device': device,
+        if (_sessionId != null) 'session_id': _sessionId,
+      };
+      _channel!.sink.add(jsonEncode(registerMsg));
+
       _subscription = _channel!.stream.listen(
-        (message) {
-          _lastMessage = message;
-          // Parse and handle initial_ui_state
-          try {
-            final decoded = jsonDecode(message);
-            if (decoded is Map<String, dynamic>) {
-              if (decoded['type'] == 'initial_ui_state') {
-                _uiState = decoded['payload'];
-              } else if (decoded['type'] == 'primitive_content_update') {
-                _updatePrimitiveContent(decoded['payload']);
-              }
-            }
-          } catch (_) {}
-          notifyListeners();
-        },
+        _handleMessage,
         onError: (err) {
           _error = err.toString();
           _connected = false;
           notifyListeners();
+          _startReconnect();
         },
         onDone: () {
           _connected = false;
           notifyListeners();
+          _startReconnect();
         },
       );
       notifyListeners();
@@ -203,29 +135,266 @@ class WebSocketProvider extends ChangeNotifier {
       _error = e.toString();
       _connected = false;
       notifyListeners();
+      _startReconnect();
     }
   }
 
-  /// Sends data through the WebSocket connection.
+  void _handleMessage(dynamic rawMessage) {
+    try {
+      final decoded = jsonDecode(rawMessage as String);
+      if (decoded is! Map<String, dynamic>) return;
+
+      final type = decoded['type'];
+      switch (type) {
+        case 'ui_render':
+          _handleUiRender(decoded);
+          break;
+        case 'ui_update':
+          _handleUiUpdate(decoded);
+          break;
+        case 'ui_append':
+          _handleUiAppend(decoded);
+          break;
+        case 'session_id':
+          _sessionId = decoded['session_id'] as String?;
+          break;
+        case 'theme':
+          // Theme updates are handled at the app level via a callback
+          _onThemeReceived?.call(decoded['config'] as Map<String, dynamic>);
+          break;
+        default:
+          _logger.d('Unhandled WS message type: $type');
+      }
+    } catch (e) {
+      _logger.e('Error parsing WS message', error: e);
+    }
+  }
+
+  /// Full component tree replacement.
+  void _handleUiRender(Map<String, dynamic> msg) {
+    final raw = msg['components'];
+    if (raw is List) {
+      _components = raw.cast<Map<String, dynamic>>();
+      _hasReceivedRender = true;
+      _persistTree();
+      notifyListeners();
+    }
+  }
+
+  /// Partial update — replace components by matching id.
+  void _handleUiUpdate(Map<String, dynamic> msg) {
+    final updates = msg['components'];
+    if (updates is! List) return;
+
+    for (final update in updates) {
+      if (update is! Map<String, dynamic>) continue;
+      final id = update['id'];
+      if (id == null) continue;
+      _replaceComponentById(_components, id as String, update);
+    }
+    _persistTree();
+    notifyListeners();
+  }
+
+  bool _replaceComponentById(
+      List<Map<String, dynamic>> tree, String id, Map<String, dynamic> replacement) {
+    for (var i = 0; i < tree.length; i++) {
+      if (tree[i]['id'] == id) {
+        tree[i] = replacement;
+        return true;
+      }
+      // Recurse into children
+      final children = tree[i]['children'];
+      if (children is List) {
+        if (_replaceComponentById(
+            children.cast<Map<String, dynamic>>(), id, replacement)) {
+          return true;
+        }
+      }
+      // Recurse into content if it's a list of components
+      final content = tree[i]['content'];
+      if (content is List) {
+        final compContent = content.whereType<Map<String, dynamic>>().toList();
+        if (compContent.isNotEmpty &&
+            _replaceComponentById(compContent, id, replacement)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Append data to a target component (used for chat streaming).
+  void _handleUiAppend(Map<String, dynamic> msg) {
+    final targetId = msg['target_id'] as String?;
+    final data = msg['data'];
+    if (data is Map<String, dynamic>) {
+      _chatMessages.add(data);
+    }
+    if (targetId != null && data != null) {
+      _appendToComponent(_components, targetId, data);
+    }
+    notifyListeners();
+  }
+
+  void _appendToComponent(
+      List<Map<String, dynamic>> tree, String targetId, dynamic data) {
+    for (final node in tree) {
+      if (node['id'] == targetId) {
+        if (node['children'] is List) {
+          if (data is Map<String, dynamic>) {
+            (node['children'] as List).add(data);
+          }
+        } else if (node['content'] is List) {
+          (node['content'] as List).add(data);
+        }
+        return;
+      }
+      final children = node['children'];
+      if (children is List) {
+        _appendToComponent(
+            children.cast<Map<String, dynamic>>(), targetId, data);
+      }
+    }
+  }
+
+  /// Send a ui_event to the backend.
+  void sendEvent(String action, Map<String, dynamic> payload) {
+    if (_channel == null || !_connected) return;
+    _channel!.sink.add(jsonEncode({
+      'type': 'ui_event',
+      'action': action,
+      'payload': payload,
+      if (_sessionId != null) 'session_id': _sessionId,
+    }));
+  }
+
+  /// Send raw data through the WebSocket.
   void send(dynamic data) {
     if (_channel != null && _connected) {
-      // TODO: Never log or print sensitive information in production.
       _channel!.sink.add(jsonEncode(data));
     }
   }
 
-  /// Disconnects the WebSocket connection and cleans up resources.
-  void disconnect() {
+  /// Re-send register_ui with updated device dimensions (e.g. after rotation).
+  void reRegister({
+    required String token,
+    required Map<String, dynamic> device,
+    required List<String> capabilities,
+  }) {
+    if (_channel == null || !_connected) return;
+    _channel!.sink.add(jsonEncode({
+      'type': 'register_ui',
+      'capabilities': capabilities,
+      'token': token,
+      'device': device,
+      if (_sessionId != null) 'session_id': _sessionId,
+    }));
+  }
+
+  // --- SDUI tree disk persistence (T014) ---
+
+  static const _cacheKey = 'sdui_cached_tree';
+
+  Future<void> _persistTree() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_cacheKey, jsonEncode(_components));
+    } catch (_) {}
+  }
+
+  /// Load cached SDUI tree from disk (call on app startup).
+  Future<void> loadCachedTree() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(_cacheKey);
+      if (cached != null) {
+        final decoded = jsonDecode(cached);
+        if (decoded is List) {
+          _components = decoded.cast<Map<String, dynamic>>();
+          // Don't set _hasReceivedRender — this is stale cache
+          notifyListeners();
+        }
+      }
+    } catch (_) {}
+  }
+
+  // --- Theme callback ---
+
+  void Function(Map<String, dynamic>)? _onThemeReceived;
+  set onThemeReceived(void Function(Map<String, dynamic>)? callback) {
+    _onThemeReceived = callback;
+  }
+
+  // --- Auto-reconnect with exponential backoff (T063/T064) ---
+
+  /// Calculate the delay for the current reconnect attempt.
+  /// Uses exponential backoff: 1s, 2s, 4s, 8s, 16s, capped at 30s.
+  Duration reconnectDelay() {
+    final delaySec = (1 << _reconnectAttempt).clamp(1, maxReconnectDelaySec);
+    return Duration(seconds: delaySec);
+  }
+
+  /// Start the auto-reconnect timer. Called when connection is lost.
+  void _startReconnect() {
+    if (!_reconnectEnabled) return;
+    if (_lastToken == null || _lastDevice == null || _lastCapabilities == null) {
+      return;
+    }
+
+    _reconnectTimer?.cancel();
+    final delay = reconnectDelay();
+    _logger.i('Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempt)');
+
+    _reconnectTimer = Timer(delay, () {
+      _reconnectAttempt++;
+      _connectInternal(
+        token: _lastToken!,
+        device: _lastDevice!,
+        capabilities: _lastCapabilities!,
+        projectId: _lastProjectId,
+      );
+    });
+  }
+
+  /// Cancel any pending reconnect timer.
+  void _cancelReconnect() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+  }
+
+  /// Disconnect and clean up resources.
+  ///
+  /// When [triggeredByUser] is true (explicit disconnect or new connect call),
+  /// auto-reconnect is suppressed and stored connection params are cleared.
+  void disconnect({bool triggeredByUser = false}) {
+    _cancelReconnect();
     _subscription?.cancel();
     _channel?.sink.close(status.goingAway);
     _channel = null;
     _connected = false;
+    _hasReceivedRender = false;
+    if (triggeredByUser) {
+      _lastToken = null;
+      _lastDevice = null;
+      _lastCapabilities = null;
+      _lastProjectId = null;
+      _reconnectAttempt = 0;
+    }
     notifyListeners();
+  }
+
+  // --- Test helpers ---
+
+  /// Simulate receiving a raw WebSocket message. Exposed for unit tests only.
+  @visibleForTesting
+  void simulateMessage(String rawMessage) {
+    _handleMessage(rawMessage);
   }
 
   @override
   void dispose() {
-    disconnect();
+    disconnect(triggeredByUser: true);
     super.dispose();
   }
 }

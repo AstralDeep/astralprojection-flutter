@@ -80,8 +80,7 @@ class _CardWidgetState extends State<CardWidget> {
           }
           return DynamicRenderer(
             key: ValueKey(childPrimitive['id'] ?? 'child_$index'),
-            primitive: childPrimitive,
-            sendAction: widget.sendAction,
+            component: childPrimitive,
           );
         },
       ),

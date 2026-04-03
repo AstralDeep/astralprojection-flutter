@@ -1,70 +1,72 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../state/project_provider.dart';
+import '../../state/auth_provider.dart';
 
-class NavBar extends StatefulWidget {
+/// Responsive navigation bar for phone/tablet.
+class NavBar extends StatelessWidget {
   final VoidCallback? onToggleControlPanel;
 
   const NavBar({super.key, this.onToggleControlPanel});
 
   @override
-  State<NavBar> createState() => _NavBarState();
-}
-
-class _NavBarState extends State<NavBar> {
-  bool isUserMenuOpen = false;
-  bool isProjectMenuOpen = false;
-
-  // TODO: Integrate with state management for profile, projects, etc.
-
-  @override
   Widget build(BuildContext context) {
+    final projectProvider = Provider.of<ProjectProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final projectName = projectProvider.currentProject?.name ?? 'No Project';
+
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       elevation: 1.5,
       titleSpacing: 16,
       title: Row(
         children: [
-          Text('AI Interface', style: TextStyle(color: Colors.blue[800], fontWeight: FontWeight.bold, fontSize: 20)),
+          Text(
+            'AstralBody',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+            ),
+          ),
           const SizedBox(width: 16),
           Flexible(
-            child: Builder(
-              builder: (context) {
-                final projectProvider = context.findAncestorWidgetOfExactType<MaterialApp>() != null
-                    ? Provider.of<ProjectProvider>(context, listen: true)
-                    : null;
-                final projectName = projectProvider?.currentProject?.name ?? 'No Project';
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    projectName,
-                    style: TextStyle(color: Colors.blue[700], fontSize: 14),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                projectName,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: 14,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
         ],
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.menu, color: Colors.blueGrey),
-          onPressed: widget.onToggleControlPanel,
+          icon: Icon(Icons.menu,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+          onPressed: onToggleControlPanel,
         ),
         PopupMenuButton<String>(
-          icon: const Icon(Icons.account_circle, color: Colors.blueGrey),
+          icon: Icon(Icons.account_circle,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
           onSelected: (value) {
-            // TODO: Handle user menu actions
+            if (value == 'logout') {
+              authProvider.logout();
+            }
           },
           itemBuilder: (context) => [
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'profile',
-              child: Text('Profile'),
+              child: Text(authProvider.profile.username ?? 'Profile'),
             ),
             const PopupMenuItem(
               value: 'logout',

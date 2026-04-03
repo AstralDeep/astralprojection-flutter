@@ -38,8 +38,7 @@ class StackLayoutWidget extends StatelessWidget {
                     Expanded(
                       child: DynamicRenderer(
                         key: ValueKey(children[i]['id']?.toString() ?? 'child_$i'),
-                        primitive: children[i] as Map<String, dynamic>,
-                        sendAction: sendAction,
+                        component: children[i] as Map<String, dynamic>,
                       ),
                     ),
                 ]
@@ -54,8 +53,7 @@ class StackLayoutWidget extends StatelessWidget {
                   if (children[i] is Map<String, dynamic>)
                     DynamicRenderer(
                       key: ValueKey(children[i]['id']?.toString() ?? 'child_$i'),
-                      primitive: children[i] as Map<String, dynamic>,
-                      sendAction: sendAction,
+                      component: children[i] as Map<String, dynamic>,
                     ),
                 ]
               ],

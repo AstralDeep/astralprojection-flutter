@@ -25,13 +25,22 @@ dependencies:
   logger: ^2.6.0
   google_fonts: ^6.2.1
   shared_preferences: ^2.5.3
-
+  fl_chart: ^0.70.2
+  flutter_appauth: ^8.0.1
+  flutter_inappwebview: ^6.1.5
+  flutter_secure_storage: ^9.2.4
+  connectivity_plus: ^6.1.4
+  flutter_colorpicker: ^1.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.4
+  mockito: ^5.4.5
+  build_runner: ^2.4.15
 
 
 # The following section is specific to Flutter packages.
