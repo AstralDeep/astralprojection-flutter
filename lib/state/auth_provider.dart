@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_appauth/flutter_appauth.dart';
 import '../config.dart';
 
 class AuthProfile {
@@ -46,6 +47,7 @@ class AuthProfile {
 class AuthProvider extends ChangeNotifier {
   final _logger = Logger();
   final _secureStorage = const FlutterSecureStorage();
+  final _appAuth = const FlutterAppAuth();
 
   AuthProfile _profile = AuthProfile.initial();
   String? _token;
@@ -57,6 +59,8 @@ class AuthProvider extends ChangeNotifier {
 
   AuthProfile get profile => _profile;
   String? get token => _token;
+  String? get refreshToken => _refreshToken;
+  DateTime? get tokenExpiry => _tokenExpiry;
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -132,21 +136,34 @@ class AuthProvider extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        _profile = AuthProfile(
-          id: data['user']?['id']?.toString() ?? '',
-          username: data['user']?['username'] ?? username,
-          globalRole: data['user']?['globalRole'] ?? 'user',
-          preferenceId: data['user']?['preferenceId'] ?? 'default',
-          profileTags: List<String>.from(data['user']?['profileTags'] ?? []),
-        );
         _token = data['access_token'];
-        _isAuthenticated = true;
+
+        // Try to decode JWT for profile
+        if (_token != null && _token!.contains('.')) {
+          _profile = _decodeJwtProfile(_token!);
+        } else {
+          _profile = AuthProfile(
+            id: data['user']?['id']?.toString() ?? '',
+            username: data['user']?['username'] ?? username,
+            globalRole: _extractGlobalRole(data['user']?['roles']),
+            preferenceId: data['user']?['preferenceId'] ?? 'default',
+            profileTags: List<String>.from(data['user']?['profileTags'] ?? []),
+          );
+        }
+
+        _refreshToken = data['refresh_token'];
         _tokenExpiry = DateTime.now().add(const Duration(hours: 2));
+        _isAuthenticated = true;
 
         await _saveSession();
         _isLoading = false;
         notifyListeners();
         return true;
+      } else if (response.statusCode == 401) {
+        _error = 'Invalid credentials';
+        _isLoading = false;
+        notifyListeners();
+        return false;
       } else {
         _error = 'Login failed: ${response.statusCode}';
         _isLoading = false;
@@ -155,7 +172,66 @@ class AuthProvider extends ChangeNotifier {
       }
     } catch (e, s) {
       _logger.e('[AUTH] Login error', error: e, stackTrace: s);
-      _error = 'Login error: $e';
+      _error = 'Cannot reach server. Please check your connection and try again.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Keycloak OIDC login via flutter_appauth authorization code + PKCE flow.
+  ///
+  /// Opens the system browser for Keycloak authentication, then exchanges
+  /// the authorization code via the backend BFF proxy at /auth/token
+  /// (so the client_secret stays server-side).
+  Future<bool> loginWithOidc() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final serviceConfig = AuthorizationServiceConfiguration(
+        authorizationEndpoint:
+            '${AppConfig.keycloakAuthority}/protocol/openid-connect/auth',
+        tokenEndpoint: AppConfig.bffTokenEndpoint,
+      );
+
+      final result = await _appAuth.authorizeAndExchangeCode(
+        AuthorizationTokenRequest(
+          AppConfig.keycloakClientId,
+          AppConfig.oidcRedirectUri,
+          serviceConfiguration: serviceConfig,
+          scopes: AppConfig.oidcScopes,
+          allowInsecureConnections: AppConfig.apiBaseUrl.startsWith('http://'),
+        ),
+      );
+
+      _token = result.accessToken;
+      _refreshToken = result.refreshToken;
+      if (result.accessTokenExpirationDateTime != null) {
+        _tokenExpiry = result.accessTokenExpirationDateTime;
+      } else {
+        _tokenExpiry = DateTime.now().add(const Duration(minutes: 5));
+      }
+
+      // Extract profile from JWT claims
+      if (_token != null) {
+        _profile = _decodeJwtProfile(_token!);
+      }
+
+      _isAuthenticated = true;
+      await _saveSession();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e, s) {
+      _logger.e('[AUTH] OIDC login error', error: e, stackTrace: s);
+      if (e.toString().contains('CANCELED') ||
+          e.toString().contains('cancelled')) {
+        _error = 'SSO login was cancelled';
+      } else {
+        _error = 'Keycloak is unreachable. Please try again or use username/password login.';
+      }
       _isLoading = false;
       notifyListeners();
       return false;
@@ -175,7 +251,8 @@ class AuthProvider extends ChangeNotifier {
         body: {
           'grant_type': 'authorization_code',
           'code': authorizationCode,
-          'redirect_uri': 'com.astralbody.app://callback',
+          'redirect_uri': AppConfig.oidcRedirectUri,
+          'client_id': AppConfig.keycloakClientId,
         },
       );
 
@@ -208,6 +285,7 @@ class AuthProvider extends ChangeNotifier {
         body: {
           'grant_type': 'refresh_token',
           'refresh_token': _refreshToken!,
+          'client_id': AppConfig.keycloakClientId,
         },
       );
 
@@ -222,16 +300,28 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Attempt silent refresh and redirect to login on failure.
+  Future<bool> refreshOrLogout() async {
+    final success = await _silentRefresh();
+    if (!success) {
+      _logger.w('[AUTH] Refresh failed, redirecting to login');
+      await logout();
+    }
+    return success;
+  }
+
   Future<bool> _handleTokenResponse(Map<String, dynamic> data,
       {bool silent = false}) async {
-    _token = data['access_token'];
-    _refreshToken = data['refresh_token'];
+    final accessToken = data['access_token'] as String?;
+    if (accessToken == null) return false;
+    _token = accessToken;
+    _refreshToken = data['refresh_token'] as String?;
     final expiresIn = data['expires_in'] as int? ?? 300;
     _tokenExpiry = DateTime.now().add(Duration(seconds: expiresIn));
 
     // Decode JWT payload for profile info
     if (!silent) {
-      _profile = _decodeJwtProfile(_token!);
+      _profile = _decodeJwtProfile(accessToken);
     }
 
     _isAuthenticated = true;
@@ -244,6 +334,8 @@ class AuthProvider extends ChangeNotifier {
     return true;
   }
 
+  /// Decode JWT payload and extract user profile (sub, preferred_username,
+  /// realm_access.roles).
   AuthProfile _decodeJwtProfile(String jwt) {
     try {
       final parts = jwt.split('.');
@@ -253,13 +345,19 @@ class AuthProvider extends ChangeNotifier {
       return AuthProfile(
         id: payload['sub'] ?? '',
         username: payload['preferred_username'] ?? payload['sub'] ?? '',
-        globalRole: (payload['realm_access']?['roles'] as List?)
-                ?.firstWhere((r) => r == 'admin', orElse: () => 'user') ??
-            'user',
+        globalRole: _extractGlobalRole(
+            payload['realm_access']?['roles'] as List?),
       );
     } catch (_) {
       return _profile;
     }
+  }
+
+  String _extractGlobalRole(List? roles) {
+    if (roles == null) return 'user';
+    if (roles.contains('admin')) return 'admin';
+    if (roles.contains('user')) return 'user';
+    return 'user';
   }
 
   Future<void> logout() async {

@@ -23,12 +23,12 @@ class TvTheme {
 
   /// The TV-optimised [ThemeData].
   static ThemeData get theme {
-    const primaryColor = Color(0xFF0033A0);
-    const secondaryColor = Color(0xFF1E8AFF);
-    const backgroundColor = Color(0xFF121212);
-    const surfaceColor = Color(0xFF1E1E1E);
-    const onSurfaceColor = Colors.white;
-    const onPrimaryColor = Colors.white;
+    const primaryColor = Color(0xFF6366F1);   // AstralColors.primary
+    const secondaryColor = Color(0xFF8B5CF6); // AstralColors.secondary
+    const backgroundColor = Color(0xFF0F1221); // AstralColors.background
+    const surfaceColor = Color(0xFF1A1E2E);   // AstralColors.surface
+    const onSurfaceColor = Color(0xFFF3F4F6); // AstralColors.text
+    const onPrimaryColor = Color(0xFFF3F4F6); // AstralColors.text
 
     return ThemeData(
       brightness: Brightness.dark,

@@ -6,6 +6,8 @@ import '../../state/auth_provider.dart';
 import '../../state/web_socket_provider.dart';
 import '../../state/device_profile_provider.dart';
 import '../../state/theme_provider.dart';
+import '../../services/voice_input_service.dart';
+import '../../services/voice_output_service.dart';
 import 'project_dropdown.dart';
 
 /// Main workspace that renders the SDUI component tree from the backend.
@@ -33,6 +35,10 @@ class WorkspaceLayout extends StatefulWidget {
 class _WorkspaceLayoutState extends State<WorkspaceLayout> {
   bool _wsConnectScheduled = false;
   final TextEditingController _chatController = TextEditingController();
+  VoiceInputService? _voiceInput;
+  VoiceOutputService? _voiceOutput;
+  bool _isRecording = false;
+  bool _speakerEnabled = true;
 
   @override
   void initState() {
@@ -63,7 +69,34 @@ class _WorkspaceLayoutState extends State<WorkspaceLayout> {
   @override
   void dispose() {
     _chatController.dispose();
+    _voiceInput?.dispose();
+    _voiceOutput?.dispose();
     super.dispose();
+  }
+
+  void _toggleRecording() {
+    if (_isRecording) {
+      _voiceInput?.stopStreaming();
+      setState(() => _isRecording = false);
+    } else {
+      _voiceInput ??= VoiceInputService();
+      _voiceInput!.startStreaming().then((_) {
+        setState(() => _isRecording = true);
+      });
+      _voiceInput!.transcripts.listen((transcript) {
+        _chatController.text += transcript;
+      });
+    }
+  }
+
+  void _toggleSpeaker() {
+    setState(() => _speakerEnabled = !_speakerEnabled);
+  }
+
+  void _playTtsAudio(String url) {
+    if (!_speakerEnabled) return;
+    _voiceOutput ??= VoiceOutputService();
+    _voiceOutput!.playAudio(url);
   }
 
   /// Send a chat message via WebSocket (T065).
@@ -184,8 +217,12 @@ class _WorkspaceLayoutState extends State<WorkspaceLayout> {
     return const SizedBox.shrink();
   }
 
-  /// Chat input bar pinned to the bottom of the workspace (T065).
+  /// Chat input bar pinned to the bottom of the workspace.
+  /// Includes voice mic + speaker toggle (hidden on TV per DeviceProfile).
   Widget _buildChatInputBar() {
+    final dp = Provider.of<DeviceProfileProvider>(context);
+    final hasMic = dp.deviceType != 'tv';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
       decoration: BoxDecoration(
@@ -198,6 +235,25 @@ class _WorkspaceLayoutState extends State<WorkspaceLayout> {
         top: false,
         child: Row(
           children: [
+            // Voice mic button — hidden on TV (no microphone)
+            if (hasMic)
+              IconButton(
+                icon: Icon(
+                  _isRecording ? Icons.mic : Icons.mic_none,
+                  color: _isRecording ? Colors.redAccent : null,
+                ),
+                onPressed: _toggleRecording,
+                tooltip: _isRecording ? 'Stop recording' : 'Voice input',
+              ),
+            // Speaker toggle — hidden on TV
+            if (hasMic)
+              IconButton(
+                icon: Icon(
+                  _speakerEnabled ? Icons.volume_up : Icons.volume_off,
+                ),
+                onPressed: _toggleSpeaker,
+                tooltip: _speakerEnabled ? 'Mute TTS' : 'Unmute TTS',
+              ),
             Expanded(
               child: TextField(
                 controller: _chatController,

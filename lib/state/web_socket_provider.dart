@@ -34,6 +34,9 @@ class WebSocketProvider extends ChangeNotifier {
   /// Chat messages appended via ui_append.
   final List<Map<String, dynamic>> _chatMessages = [];
 
+  /// Saved components received from the backend.
+  List<Map<String, dynamic>>? _savedComponents;
+
   // --- Reconnect state (T063/T064) ---
   Timer? _reconnectTimer;
   int _reconnectAttempt = 0;
@@ -55,6 +58,7 @@ class WebSocketProvider extends ChangeNotifier {
   bool get hasReceivedRender => _hasReceivedRender;
   List<Map<String, dynamic>> get chatMessages =>
       List.unmodifiable(_chatMessages);
+  List<Map<String, dynamic>>? get savedComponents => _savedComponents;
 
   /// Current reconnect attempt (exposed for testing).
   int get reconnectAttempt => _reconnectAttempt;
@@ -161,6 +165,16 @@ class WebSocketProvider extends ChangeNotifier {
         case 'theme':
           // Theme updates are handled at the app level via a callback
           _onThemeReceived?.call(decoded['config'] as Map<String, dynamic>);
+          break;
+        case 'saved_components_list':
+          _handleSavedComponentsList(decoded);
+          break;
+        case 'component_saved':
+          _handleComponentSaved(decoded);
+          break;
+        case 'components_combined':
+        case 'components_condensed':
+          _handleComponentsMerged(decoded);
           break;
         default:
           _logger.d('Unhandled WS message type: $type');
@@ -317,6 +331,39 @@ class WebSocketProvider extends ChangeNotifier {
         }
       }
     } catch (_) {}
+  }
+
+  // --- Saved components handling ---
+
+  void _handleSavedComponentsList(Map<String, dynamic> msg) {
+    final raw = msg['components'];
+    if (raw is List) {
+      _savedComponents = raw.cast<Map<String, dynamic>>();
+      notifyListeners();
+    }
+  }
+
+  void _handleComponentSaved(Map<String, dynamic> msg) {
+    final component = msg['component'];
+    if (component is Map<String, dynamic>) {
+      _savedComponents ??= [];
+      _savedComponents!.add(component);
+      notifyListeners();
+    }
+  }
+
+  void _handleComponentsMerged(Map<String, dynamic> msg) {
+    final removedIds = msg['removed_ids'] as List?;
+    final newComponents = msg['new_components'] as List?;
+    if (_savedComponents != null && removedIds != null) {
+      _savedComponents!.removeWhere(
+          (c) => removedIds.contains(c['id']));
+    }
+    if (newComponents != null) {
+      _savedComponents ??= [];
+      _savedComponents!.addAll(newComponents.cast<Map<String, dynamic>>());
+    }
+    notifyListeners();
   }
 
   // --- Theme callback ---

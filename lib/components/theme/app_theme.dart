@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-// Defines the color palette for the University of Kentucky theme.
-class _UKColors {
-  static const Color wildcatBlue = Color(0xFF0033A0);
-  static const Color bluegrass = Color(0xFF1E8AFF);
-  static const Color midnight = Color(0xFF1B365D);
+/// Color palette matching the React frontend's dark navy theme.
+/// Values extracted from React CSS variables (research.md R9).
+class AstralColors {
+  static const Color background = Color(0xFF0F1221);
+  static const Color surface = Color(0xFF1A1E2E);
+  static const Color primary = Color(0xFF6366F1); // indigo
+  static const Color secondary = Color(0xFF8B5CF6); // purple
+  static const Color text = Color(0xFFF3F4F6);
+  static const Color accent = Color(0xFF06B6D4); // cyan
   static const Color darkText = Color(0xFF212121);
-  static const Color lightText = Color(0xFFFFFFFF);
-  static const Color lightBackground = Color(0xFFF5F7FA);
-  static const Color darkBackground = Color(0xFF121212);
-  static const Color darkSurface = Color(0xFF1E1E1E);
-  // ignore: unused_field, may be used for future theme elements
-  static const Color grey = Color(0xFF8E8E8E);
+  static const Color error = Color(0xFFEF4444);
 }
 
-// Main class for the application's theme.
+/// Main class for the application's theme.
 class AppTheme {
   // Common text theme setup used by both light and dark themes.
   static final TextTheme _textTheme = TextTheme(
@@ -39,71 +38,73 @@ class AppTheme {
   /// **LightTheme** for the application.
   static final ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,
-    primaryColor: _UKColors.wildcatBlue,
-    scaffoldBackgroundColor: _UKColors.lightBackground,
+    primaryColor: AstralColors.primary,
+    scaffoldBackgroundColor: const Color(0xFFF5F7FA),
     colorScheme: const ColorScheme.light(
-      primary: _UKColors.wildcatBlue,
-      secondary: _UKColors.bluegrass,
+      primary: AstralColors.primary,
+      secondary: AstralColors.secondary,
+      tertiary: AstralColors.accent,
       surface: Colors.white,
-      error: Colors.red,
-      onPrimary: _UKColors.lightText,
-      onSecondary: _UKColors.lightText,
-      onSurface: _UKColors.darkText,
-      onError: _UKColors.lightText,
+      error: AstralColors.error,
+      onPrimary: AstralColors.text,
+      onSecondary: AstralColors.text,
+      onSurface: AstralColors.darkText,
+      onError: AstralColors.text,
       brightness: Brightness.light,
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: _UKColors.wildcatBlue,
+      backgroundColor: AstralColors.primary,
       elevation: 0,
-      iconTheme: IconThemeData(color: _UKColors.lightText),
+      iconTheme: IconThemeData(color: AstralColors.text),
     ),
     textTheme: _textTheme.apply(
-      bodyColor: _UKColors.darkText,
-      displayColor: _UKColors.darkText,
+      bodyColor: AstralColors.darkText,
+      displayColor: AstralColors.darkText,
     ),
     iconTheme: const IconThemeData(
-      color: _UKColors.wildcatBlue,
+      color: AstralColors.primary,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        foregroundColor: _UKColors.lightText,
-        backgroundColor: _UKColors.wildcatBlue,
+        foregroundColor: AstralColors.text,
+        backgroundColor: AstralColors.primary,
       ),
     ),
   );
 
-  /// **DarkTheme** for the application.
+  /// **DarkTheme** for the application (matches React frontend).
   static final ThemeData darkTheme = ThemeData(
     brightness: Brightness.dark,
-    primaryColor: _UKColors.wildcatBlue,
-    scaffoldBackgroundColor: _UKColors.darkBackground,
+    primaryColor: AstralColors.primary,
+    scaffoldBackgroundColor: AstralColors.background,
     colorScheme: const ColorScheme.dark(
-      primary: _UKColors.wildcatBlue,
-      secondary: _UKColors.bluegrass,
-      surface: _UKColors.darkSurface,
-      error: Colors.redAccent,
-      onPrimary: _UKColors.lightText,
-      onSecondary: _UKColors.lightText,
-      onSurface: _UKColors.lightText,
-      onError: _UKColors.darkText,
+      primary: AstralColors.primary,
+      secondary: AstralColors.secondary,
+      tertiary: AstralColors.accent,
+      surface: AstralColors.surface,
+      error: AstralColors.error,
+      onPrimary: AstralColors.text,
+      onSecondary: AstralColors.text,
+      onSurface: AstralColors.text,
+      onError: AstralColors.darkText,
       brightness: Brightness.dark,
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: _UKColors.midnight,
+      backgroundColor: AstralColors.surface,
       elevation: 0,
-      iconTheme: IconThemeData(color: _UKColors.lightText),
+      iconTheme: IconThemeData(color: AstralColors.text),
     ),
     textTheme: _textTheme.apply(
-      bodyColor: _UKColors.lightText,
-      displayColor: _UKColors.lightText,
+      bodyColor: AstralColors.text,
+      displayColor: AstralColors.text,
     ),
     iconTheme: const IconThemeData(
-      color: _UKColors.bluegrass,
+      color: AstralColors.accent,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        foregroundColor: _UKColors.lightText,
-        backgroundColor: _UKColors.wildcatBlue,
+        foregroundColor: AstralColors.text,
+        backgroundColor: AstralColors.primary,
       ),
     ),
   );
