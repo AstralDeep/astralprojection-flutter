@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../state/device_profile_provider.dart';
 import '../../platform/tv/tv_theme.dart';
 import '../dynamic_renderer.dart';
+import '../theme/app_theme.dart';
 
 /// Renders a collapsible section using ExpansionTile.
 ///
@@ -61,18 +62,49 @@ class _CollapsibleWidgetState extends State<CollapsibleWidget> {
     final title = widget.component['title']?.toString() ?? 'Untitled';
     final content = widget.component['content'] as List<dynamic>? ?? [];
 
-    final tile = ExpansionTile(
-      title: Text(title),
-      initiallyExpanded: _isExpanded,
-      onExpansionChanged: (expanded) {
-        setState(() => _isExpanded = expanded);
-      },
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: DynamicRenderer.renderChildren(content),
+    final tile = Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      decoration: BoxDecoration(
+        color: AstralColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AstralColors.primary.withValues(alpha: 0.12),
         ),
-      ],
+        boxShadow: [
+          BoxShadow(
+            color: AstralColors.primary.withValues(alpha: 0.08),
+            blurRadius: 12,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: ExpansionTile(
+          title: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AstralColors.text,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                ),
+          ),
+          iconColor: AstralColors.primary,
+          collapsedIconColor: AstralColors.text.withValues(alpha: 0.5),
+          backgroundColor: Colors.transparent,
+          collapsedBackgroundColor: Colors.transparent,
+          initiallyExpanded: _isExpanded,
+          onExpansionChanged: (expanded) {
+            setState(() => _isExpanded = expanded);
+          },
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+              child: DynamicRenderer.renderChildren(content),
+            ),
+          ],
+        ),
+      ),
     );
 
     return _buildFocusWrapper(context, tile);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../state/device_profile_provider.dart';
 import '../../platform/tv/tv_theme.dart';
+import '../theme/app_theme.dart';
 import 'form_scope.dart';
 
 /// Renders a text input field.
@@ -117,12 +118,28 @@ class _InputWidgetState extends State<InputWidget> {
     final textField = TextField(
       controller: _controller,
       obscureText: isPassword,
+      style: const TextStyle(color: AstralColors.text),
+      cursorColor: AstralColors.primary,
       decoration: InputDecoration(
         hintText: placeholder,
+        hintStyle: TextStyle(color: AstralColors.text.withValues(alpha: 0.4)),
         labelText: name.isNotEmpty ? name : null,
-        border: const OutlineInputBorder(),
+        labelStyle: TextStyle(color: AstralColors.text.withValues(alpha: 0.6)),
+        floatingLabelStyle: const TextStyle(color: AstralColors.primary),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AstralColors.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: BorderSide(color: AstralColors.text.withValues(alpha: 0.15)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: BorderSide(color: AstralColors.text.withValues(alpha: 0.15)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: const BorderSide(color: AstralColors.primary, width: 2.0),
+        ),
       ),
       onSubmitted: _onSubmitted,
     );

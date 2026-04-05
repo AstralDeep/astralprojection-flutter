@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 /// Renders a metric card from SDUI schema.
 ///
@@ -24,10 +25,17 @@ class MetricWidget extends StatelessWidget {
     return Semantics(
       label: '$title: $value',
       child: Card(
-      elevation: 1,
-      margin: const EdgeInsets.symmetric(vertical: 4.0),
+      elevation: 0,
+      color: AstralColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+        side: BorderSide(
+          color: AstralColors.primary.withValues(alpha: 0.15),
+        ),
+      ),
+      margin: const EdgeInsets.symmetric(vertical: 6.0),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -38,7 +46,7 @@ class MetricWidget extends StatelessWidget {
                   Icon(
                     icon,
                     size: 20.0,
-                    color: theme.colorScheme.primary,
+                    color: AstralColors.accent,
                   ),
                   const SizedBox(width: 8.0),
                 ],
@@ -46,18 +54,20 @@ class MetricWidget extends StatelessWidget {
                   child: Text(
                     title,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                      color: AstralColors.text.withValues(alpha: 0.6),
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8.0),
-            // Large value
+            const SizedBox(height: 10.0),
+            // Large value — prominent display
             Text(
               value,
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+              style: theme.textTheme.headlineLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AstralColors.text,
               ),
             ),
             // Optional subtitle
@@ -66,19 +76,22 @@ class MetricWidget extends StatelessWidget {
               Text(
                 subtitle,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                  color: AstralColors.text.withValues(alpha: 0.5),
                 ),
               ),
             ],
             // Optional progress bar
             if (progress != null) ...[
-              const SizedBox(height: 12.0),
+              const SizedBox(height: 14.0),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4.0),
                 child: LinearProgressIndicator(
                   value: progress,
                   minHeight: 6.0,
-                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  backgroundColor: AstralColors.primary.withValues(alpha: 0.15),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    AstralColors.accent,
+                  ),
                 ),
               ),
             ],

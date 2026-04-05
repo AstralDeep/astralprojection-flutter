@@ -41,7 +41,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
     final ws = Provider.of<WebSocketProvider>(context, listen: false);
     final shell = Provider.of<AppShellProvider>(context, listen: false);
     ws.sendEvent('chat_message', {
-      'text': text,
+      'message': text,
       'chat_id': shell.activeChatId ?? 'default',
     });
     _controller.clear();

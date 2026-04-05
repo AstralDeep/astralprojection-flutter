@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 /// Renders a paginated DataTable from SDUI schema.
 ///
@@ -100,28 +101,53 @@ class _TableWidgetState extends State<TableWidget> {
 
     final theme = Theme.of(context);
 
+    // Slightly lighter than surface for header distinction.
+    const headerBg = Color(0xFF232840);
+    // Two alternating row backgrounds for readability.
+    const rowEven = AstralColors.surface; // #1A1E2E
+    const rowOdd = Color(0xFF161A2A);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
-            headingRowColor: WidgetStateProperty.all(
-              theme.colorScheme.surfaceContainerHighest,
+            headingRowColor: WidgetStateProperty.all(headerBg),
+            dataRowColor: WidgetStateProperty.all(Colors.transparent),
+            dividerThickness: 0.5,
+            headingTextStyle: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: AstralColors.text.withValues(alpha: 0.9),
+              letterSpacing: 0.3,
+            ),
+            dataTextStyle: TextStyle(
+              fontSize: 13,
+              color: AstralColors.text.withValues(alpha: 0.8),
+            ),
+            horizontalMargin: 16,
+            columnSpacing: 24,
+            decoration: BoxDecoration(
+              color: AstralColors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AstralColors.primary.withValues(alpha: 0.15),
+              ),
             ),
             columns: [
               for (final header in headers)
                 DataColumn(
-                  label: Text(
-                    header,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  label: Text(header),
                 ),
             ],
             rows: [
-              for (final row in rows)
+              for (int i = 0; i < rows.length; i++)
                 DataRow(
-                  cells: _buildCells(row, headers.length),
+                  color: WidgetStateProperty.all(
+                    i.isEven ? rowEven : rowOdd,
+                  ),
+                  cells: _buildCells(rows[i], headers.length),
                 ),
             ],
           ),
@@ -148,20 +174,29 @@ class _TableWidgetState extends State<TableWidget> {
   }
 
   Widget _buildPaginationControls(ThemeData theme) {
+    final dimText = AstralColors.text.withValues(alpha: 0.55);
+    final activeIcon = AstralColors.accent;
+    final disabledIcon = AstralColors.text.withValues(alpha: 0.25);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Page size selector
           Row(
             children: [
-              const Text('Rows per page: '),
+              Text(
+                'Rows per page: ',
+                style: TextStyle(fontSize: 12, color: dimText),
+              ),
               DropdownButton<int>(
                 value: _pageSizes.contains(_pageSize)
                     ? _pageSize
                     : _pageSizes.first,
                 underline: const SizedBox.shrink(),
+                dropdownColor: AstralColors.surface,
+                style: TextStyle(fontSize: 12, color: AstralColors.text),
                 items: [
                   for (final size in _pageSizes)
                     DropdownMenuItem(value: size, child: Text('$size')),
@@ -180,18 +215,22 @@ class _TableWidgetState extends State<TableWidget> {
                 '\u2013'
                 '${(_pageOffset + _pageSize).clamp(0, _totalRows)}'
                 ' of $_totalRows',
-                style: theme.textTheme.bodySmall,
+                style: TextStyle(fontSize: 12, color: dimText),
               ),
               const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.first_page),
                 iconSize: 20,
+                color: activeIcon,
+                disabledColor: disabledIcon,
                 onPressed: _currentPage > 0 ? () => _goToPage(0) : null,
                 tooltip: 'First page',
               ),
               IconButton(
                 icon: const Icon(Icons.chevron_left),
                 iconSize: 20,
+                color: activeIcon,
+                disabledColor: disabledIcon,
                 onPressed: _currentPage > 0
                     ? () => _goToPage(_currentPage - 1)
                     : null,
@@ -200,6 +239,8 @@ class _TableWidgetState extends State<TableWidget> {
               IconButton(
                 icon: const Icon(Icons.chevron_right),
                 iconSize: 20,
+                color: activeIcon,
+                disabledColor: disabledIcon,
                 onPressed: _currentPage < _totalPages - 1
                     ? () => _goToPage(_currentPage + 1)
                     : null,
@@ -208,6 +249,8 @@ class _TableWidgetState extends State<TableWidget> {
               IconButton(
                 icon: const Icon(Icons.last_page),
                 iconSize: 20,
+                color: activeIcon,
+                disabledColor: disabledIcon,
                 onPressed: _currentPage < _totalPages - 1
                     ? () => _goToPage(_totalPages - 1)
                     : null,

@@ -46,4 +46,16 @@ class TokenStorageProvider extends ChangeNotifier {
       notifyListeners();
     } catch (_) {}
   }
+
+  /// Pre-seed a mock dev token so the SDUI login page can be skipped.
+  /// Activated by --dart-define=DEV_MODE=true at build time.
+  static const bool _devMode = bool.fromEnvironment('DEV_MODE');
+  static const String _devToken = 'dev-token';
+
+  /// If DEV_MODE is active and no cached token exists, seed the dev token.
+  Future<void> seedDevTokenIfNeeded() async {
+    if (!_devMode) return;
+    if (hasToken) return;
+    await store(_devToken, '', 86400);
+  }
 }

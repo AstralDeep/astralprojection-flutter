@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../dynamic_renderer.dart';
+import '../theme/app_theme.dart';
 import 'form_scope.dart';
 
 /// Renders a titled card with child components.
@@ -33,7 +34,11 @@ class CardWidget extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12.0),
               child: Text(
                 title,
-                style: Theme.of(context).textTheme.titleMedium,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AstralColors.text,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 17,
+                    ),
               ),
             ),
           if (content.isNotEmpty) DynamicRenderer.renderChildren(content),
@@ -43,18 +48,25 @@ class CardWidget extends StatelessWidget {
 
     if (variant == 'glass') {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 8.0),
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
+              color: AstralColors.surface.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.15),
+                color: AstralColors.primary.withValues(alpha: 0.15),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: AstralColors.primary.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
             child: childColumn,
           ),
@@ -62,12 +74,24 @@ class CardWidget extends StatelessWidget {
       );
     }
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: childColumn,
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: AstralColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AstralColors.primary.withValues(alpha: 0.12),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AstralColors.primary.withValues(alpha: 0.08),
+            blurRadius: 12,
+            spreadRadius: 1,
+          ),
+        ],
       ),
+      child: childColumn,
     );
   }
 }

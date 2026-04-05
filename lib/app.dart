@@ -77,7 +77,8 @@ class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
 
     // Load cached SDUI tree and tokens on startup
     ws.loadCachedTree();
-    tokenStorage.loadCached().then((_) {
+    tokenStorage.loadCached().then((_) async {
+      await tokenStorage.seedDevTokenIfNeeded();
       _initWebSocket();
     });
 

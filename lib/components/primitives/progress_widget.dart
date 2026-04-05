@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 /// Renders a linear progress indicator from SDUI schema.
 ///
@@ -18,36 +19,45 @@ class ProgressWidget extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (label != null && label.isNotEmpty || showPercentage)
             Padding(
-              padding: const EdgeInsets.only(bottom: 4.0),
+              padding: const EdgeInsets.only(bottom: 6.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   if (label != null && label.isNotEmpty)
                     Flexible(
-                      child: Text(label, style: theme.textTheme.bodyMedium),
+                      child: Text(
+                        label,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AstralColors.text,
+                        ),
+                      ),
                     ),
                   if (showPercentage)
                     Text(
                       '${(value * 100).round()}%',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                        color: AstralColors.accent,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                 ],
               ),
             ),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4.0),
+            borderRadius: BorderRadius.circular(5.0),
             child: LinearProgressIndicator(
               value: value,
               minHeight: 8.0,
-              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              backgroundColor: AstralColors.primary.withValues(alpha: 0.15),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AstralColors.primary,
+              ),
             ),
           ),
         ],

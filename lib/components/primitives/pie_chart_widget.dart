@@ -1,6 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 /// Renders a pie chart using fl_chart.
 ///
 /// Schema: { type: "pie_chart", title: "Market Share", labels: ["A","B","C"],
@@ -14,13 +16,13 @@ class PieChartWidget extends StatelessWidget {
   });
 
   static const _defaultColors = [
-    '#4285f4',
-    '#34a853',
-    '#ea4335',
-    '#fbbc05',
-    '#8e24aa',
-    '#00acc1',
-    '#ff7043',
+    '#6366F1', // primary (indigo)
+    '#8B5CF6', // secondary (purple)
+    '#06B6D4', // accent (cyan)
+    '#A78BFA', // lighter purple
+    '#818CF8', // lighter indigo
+    '#22D3EE', // lighter cyan
+    '#C084FC', // soft violet
   ];
 
   static Color _parseHex(String hex) {
@@ -60,7 +62,7 @@ class PieChartWidget extends StatelessWidget {
         titleStyle: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: Colors.white,
+          color: AstralColors.text,
         ),
         radius: 80,
       ));
@@ -117,7 +119,10 @@ class PieChartWidget extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           labels[i],
-                          style: const TextStyle(fontSize: 12),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AstralColors.text,
+                          ),
                         ),
                       ],
                     ),

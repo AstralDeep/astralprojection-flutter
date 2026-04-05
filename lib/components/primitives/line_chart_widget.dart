@@ -1,6 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 /// Renders a line chart using fl_chart.
 ///
 /// Schema: { type: "line_chart", title: "Growth", labels: ["Q1","Q2"],
@@ -93,14 +95,39 @@ class LineChartWidget extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
                             labels[idx],
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AstralColors.text,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          meta.formattedValue,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AstralColors.text,
                           ),
                         );
                       },
                     ),
                   ),
                 ),
-                gridData: const FlGridData(show: true),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    strokeWidth: 1,
+                  ),
+                ),
                 borderData: FlBorderData(show: false),
               ),
             ),
@@ -136,7 +163,10 @@ class LineChartWidget extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   ds['label']?.toString() ?? '',
-                  style: const TextStyle(fontSize: 12),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AstralColors.text,
+                  ),
                 ),
               ],
             ),

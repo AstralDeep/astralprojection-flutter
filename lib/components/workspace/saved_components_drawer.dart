@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../state/app_shell_provider.dart';
 import '../../state/web_socket_provider.dart';
 import '../dynamic_renderer.dart';
 
@@ -19,12 +20,23 @@ class SavedComponentsDrawer extends StatefulWidget {
 class _SavedComponentsDrawerState extends State<SavedComponentsDrawer> {
   List<Map<String, dynamic>> _savedComponents = [];
   bool _isLoading = false;
+  String? _lastChatId;
 
   @override
   void initState() {
     super.initState();
     _requestSavedComponents();
     _listenForUpdates();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final shell = Provider.of<AppShellProvider>(context);
+    if (_lastChatId != null && shell.activeChatId != _lastChatId) {
+      _requestSavedComponents();
+    }
+    _lastChatId = shell.activeChatId;
   }
 
   void _requestSavedComponents() {
@@ -39,9 +51,6 @@ class _SavedComponentsDrawerState extends State<SavedComponentsDrawer> {
   }
 
   void _onWsUpdate() {
-    // WebSocketProvider notifies on message; check for saved component updates
-    // This will be triggered when saved_components_list, component_saved,
-    // components_combined, or components_condensed messages arrive.
     final ws = Provider.of<WebSocketProvider>(context, listen: false);
     final components = ws.savedComponents;
     if (components != null) {
@@ -122,6 +131,9 @@ class _SavedComponentsDrawerState extends State<SavedComponentsDrawer> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final ws = Provider.of<WebSocketProvider>(context);
+    final isCombining = ws.combineStatus.isNotEmpty;
+    final combineError = ws.combineError;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -136,12 +148,50 @@ class _SavedComponentsDrawerState extends State<SavedComponentsDrawer> {
                   style: theme.textTheme.titleMedium),
               if (_savedComponents.length >= 2)
                 TextButton.icon(
-                  onPressed: _condenseAll,
-                  icon: const Icon(Icons.compress, size: 18),
-                  label: const Text('Condense All'),
+                  onPressed: isCombining ? null : _condenseAll,
+                  icon: isCombining
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.compress, size: 18),
+                  label: Text(isCombining
+                      ? (ws.combineStatusMessage.isNotEmpty
+                          ? ws.combineStatusMessage
+                          : 'Condensing...')
+                      : 'Condense All'),
                 ),
             ],
           ),
+
+          // Combine error banner
+          if (combineError != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: theme.colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline,
+                          size: 16, color: theme.colorScheme.error),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(combineError,
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: theme.colorScheme.onErrorContainer)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
           const SizedBox(height: 8),
 
           // Content

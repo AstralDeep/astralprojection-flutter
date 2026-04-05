@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../state/device_profile_provider.dart';
 import '../../platform/tv/tv_theme.dart';
+import '../theme/app_theme.dart';
 import 'form_scope.dart';
 
 /// Renders a clickable button that dispatches a ui_event.
@@ -74,10 +75,33 @@ class ButtonWidget extends StatelessWidget {
     final button = switch (variant) {
       'secondary' => OutlinedButton(
           onPressed: onPressed,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AstralColors.primary,
+            side: const BorderSide(color: AstralColors.primary, width: 1.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+            overlayColor: AstralColors.primary.withValues(alpha: 0.12),
+          ),
           child: Text(label),
         ),
       _ => ElevatedButton(
           onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AstralColors.primary,
+            foregroundColor: AstralColors.text,
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+            overlayColor: AstralColors.secondary.withValues(alpha: 0.2),
+          ).copyWith(
+            elevation: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.pressed)) return 0;
+              if (states.contains(WidgetState.hovered)) return 4;
+              return 2;
+            }),
+          ),
           child: Text(label),
         ),
     };

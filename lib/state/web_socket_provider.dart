@@ -37,6 +37,11 @@ class WebSocketProvider extends ChangeNotifier {
   /// Saved components received from the backend.
   List<Map<String, dynamic>>? _savedComponents;
 
+  /// Combine/condense operation status.
+  String _combineStatus = '';
+  String _combineStatusMessage = '';
+  String? _combineError;
+
   // --- Reconnect state (T063/T064) ---
   Timer? _reconnectTimer;
   int _reconnectAttempt = 0;
@@ -59,6 +64,9 @@ class WebSocketProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get chatMessages =>
       List.unmodifiable(_chatMessages);
   List<Map<String, dynamic>>? get savedComponents => _savedComponents;
+  String get combineStatus => _combineStatus;
+  String get combineStatusMessage => _combineStatusMessage;
+  String? get combineError => _combineError;
 
   /// Current reconnect attempt (exposed for testing).
   int get reconnectAttempt => _reconnectAttempt;
@@ -178,6 +186,16 @@ class WebSocketProvider extends ChangeNotifier {
         case 'components_combined':
         case 'components_condensed':
           _handleComponentsMerged(decoded);
+          break;
+        case 'combine_status':
+          _combineStatus = decoded['status'] as String? ?? '';
+          _combineStatusMessage = decoded['message'] as String? ?? '';
+          notifyListeners();
+          break;
+        case 'combine_error':
+          _combineStatus = '';
+          _combineError = decoded['error'] as String? ?? 'Unknown error';
+          notifyListeners();
           break;
         case 'ui_action':
           _handleUiAction(decoded);
@@ -332,6 +350,7 @@ class WebSocketProvider extends ChangeNotifier {
   // --- SDUI tree disk persistence (T014) ---
 
   static const _cacheKey = 'sdui_cached_tree';
+  static const _savedCacheKey = 'sdui_cached_saved_components';
 
   Future<void> _persistTree() async {
     try {
@@ -340,7 +359,15 @@ class WebSocketProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// Load cached SDUI tree from disk (call on app startup).
+  Future<void> _persistSavedComponents() async {
+    if (_savedComponents == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_savedCacheKey, jsonEncode(_savedComponents));
+    } catch (_) {}
+  }
+
+  /// Load cached SDUI tree and saved components from disk (call on app startup).
   Future<void> loadCachedTree() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -350,9 +377,16 @@ class WebSocketProvider extends ChangeNotifier {
         if (decoded is List) {
           _components = decoded.cast<Map<String, dynamic>>();
           // Don't set _hasReceivedRender — this is stale cache
-          notifyListeners();
         }
       }
+      final savedCached = prefs.getString(_savedCacheKey);
+      if (savedCached != null) {
+        final decoded = jsonDecode(savedCached);
+        if (decoded is List) {
+          _savedComponents = decoded.cast<Map<String, dynamic>>();
+        }
+      }
+      notifyListeners();
     } catch (_) {}
   }
 
@@ -362,6 +396,7 @@ class WebSocketProvider extends ChangeNotifier {
     final raw = msg['components'];
     if (raw is List) {
       _savedComponents = raw.cast<Map<String, dynamic>>();
+      _persistSavedComponents();
       notifyListeners();
     }
   }
@@ -371,11 +406,14 @@ class WebSocketProvider extends ChangeNotifier {
     if (component is Map<String, dynamic>) {
       _savedComponents ??= [];
       _savedComponents!.add(component);
+      _persistSavedComponents();
       notifyListeners();
     }
   }
 
   void _handleComponentsMerged(Map<String, dynamic> msg) {
+    _combineStatus = '';
+    _combineError = null;
     final removedIds = msg['removed_ids'] as List?;
     final newComponents = msg['new_components'] as List?;
     if (_savedComponents != null && removedIds != null) {
@@ -386,6 +424,7 @@ class WebSocketProvider extends ChangeNotifier {
       _savedComponents ??= [];
       _savedComponents!.addAll(newComponents.cast<Map<String, dynamic>>());
     }
+    _persistSavedComponents();
     notifyListeners();
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class CheckboxWidget extends StatefulWidget {
   final Map<String, dynamic> primitive;
@@ -87,7 +88,10 @@ class _CheckboxWidgetState extends State<CheckboxWidget> {
     // To make the entire row tappable, we wrap it in InkWell
     return InkWell(
       onTap: isDisabled ? null : () => _handleChange(!currentChecked),
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(6),
+      overlayColor: WidgetStatePropertyAll(
+        AstralColors.primary.withValues(alpha: 0.1),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
         child: Row(
@@ -95,17 +99,27 @@ class _CheckboxWidgetState extends State<CheckboxWidget> {
           children: [
             Checkbox(
               value: currentChecked,
-              // The `onChanged` of the checkbox itself also triggers the handler
               onChanged: isDisabled ? null : _handleChange,
-              // Apply disabled appearance
-              activeColor: isDisabled ? Colors.grey : Theme.of(context).colorScheme.primary,
+              activeColor: isDisabled ? Colors.grey : AstralColors.primary,
+              checkColor: AstralColors.text,
+              side: BorderSide(
+                color: isDisabled
+                    ? Colors.grey
+                    : AstralColors.text.withValues(alpha: 0.4),
+                width: 1.5,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(3),
+              ),
             ),
             if (label.isNotEmpty)
               Flexible(
                 child: Text(
                   label,
                   style: TextStyle(
-                    color: isDisabled ? Colors.grey : Colors.black87,
+                    color: isDisabled
+                        ? Colors.grey
+                        : AstralColors.text,
                   ),
                 ),
               ),
