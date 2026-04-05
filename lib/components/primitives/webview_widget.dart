@@ -1,5 +1,8 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Renders an embedded WebView that loads a URL and optionally intercepts
 /// navigation to a specific URL prefix, extracting query parameters and
@@ -34,6 +37,26 @@ class _WebViewWidgetState extends State<WebViewWidget> {
 
     if (url.isEmpty) {
       return const Center(child: Text('No URL provided'));
+    }
+
+    // flutter_inappwebview has no Linux implementation — show a fallback.
+    if (Platform.isLinux) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.public, size: 48, color: Colors.grey),
+            const SizedBox(height: 12),
+            const Text('WebView is not supported on Linux.'),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.open_in_browser),
+              label: const Text('Open in Browser'),
+              onPressed: () => launchUrl(Uri.parse(url)),
+            ),
+          ],
+        ),
+      );
     }
 
     final webview = InAppWebView(

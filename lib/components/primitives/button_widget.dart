@@ -56,7 +56,7 @@ class ButtonWidget extends StatelessWidget {
     void onPressed() {
       final eventPayload = <String, dynamic>{
         ...payload,
-        if (componentId != null) 'component_id': componentId,
+        'component_id': ?componentId,
       };
 
       // When collect_inputs is true, gather values from sibling inputs

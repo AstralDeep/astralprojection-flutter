@@ -72,7 +72,7 @@ class _WorkspaceLayoutState extends State<WorkspaceLayout> {
     final wsProvider = Provider.of<WebSocketProvider>(context, listen: false);
     wsProvider.sendEvent('combine_components', {
       'component_ids': componentIds,
-      if (targetId != null) 'target_id': targetId,
+      'target_id': ?targetId,
     });
   }
 

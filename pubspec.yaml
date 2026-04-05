@@ -8,7 +8,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.7.2
+  sdk: ^3.9.0
 
 
 dependencies:
@@ -18,12 +18,11 @@ dependencies:
   provider: ^6.1.5
   http: ^1.4.0
   web_socket_channel: ^3.0.3
-  flutter_markdown: ^0.7.7+1
   file_picker: ^11.0.1
   just_audio: ^0.10.4
   mime: ^2.0.0
   logger: ^2.6.0
-  google_fonts: ^6.2.1
+  google_fonts: ^8.0.2
   shared_preferences: ^2.5.3
   fl_chart: ^1.1.0
   flutter_secure_storage: ^10.0.0
@@ -33,6 +32,7 @@ dependencies:
   flutter_colorpicker: ^1.1.0
   record: ^6.2.0              # STT audio recording for voice input (Constitution V)
   flutter_math_fork: ^0.7.2   # LaTeX math rendering within markdown (Constitution V)
+  flutter_markdown_plus: ^1.0.7
 
 dev_dependencies:
   flutter_test:

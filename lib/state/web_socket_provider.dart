@@ -118,7 +118,7 @@ class WebSocketProvider extends ChangeNotifier {
         'type': 'register_ui',
         'capabilities': capabilities,
         'device': device,
-        if (token != null) 'token': token,
+        'token': ?token,
         if (_sessionId != null) 'session_id': _sessionId,
       };
       _channel!.sink.add(jsonEncode(registerMsg));
@@ -324,7 +324,7 @@ class WebSocketProvider extends ChangeNotifier {
       'type': 'register_ui',
       'capabilities': capabilities,
       'device': device,
-      if (token != null) 'token': token,
+      'token': ?token,
       if (_sessionId != null) 'session_id': _sessionId,
     }));
   }
