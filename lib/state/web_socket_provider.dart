@@ -71,8 +71,9 @@ class WebSocketProvider extends ChangeNotifier {
   set reconnectEnabled(bool value) => _reconnectEnabled = value;
 
   /// Connect to the AstralBody backend WebSocket.
+  /// Token is optional — unauthenticated connections receive the SDUI login page.
   void connect({
-    required String token,
+    String? token,
     required Map<String, dynamic> device,
     required List<String> capabilities,
     String? projectId,
@@ -96,26 +97,28 @@ class WebSocketProvider extends ChangeNotifier {
 
   /// Internal connect used by both initial connect and auto-reconnect.
   void _connectInternal({
-    required String token,
+    String? token,
     required Map<String, dynamic> device,
     required List<String> capabilities,
     String? projectId,
   }) {
     try {
+      // Connect without token in URL — auth is handled via register_ui message
       final wsUrl = projectId != null
-          ? '${AppConfig.wsUrl}/stream/mcp:$projectId?token=$token'
-          : '${AppConfig.wsUrl}?token=$token';
+          ? '${AppConfig.wsUrl}/stream/mcp:$projectId'
+          : AppConfig.wsUrl;
 
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
       _connected = true;
       _error = null;
 
       // Send register_ui immediately, preserving session_id across reconnects.
+      // Token is included if available (for reconnection with cached credentials).
       final registerMsg = {
         'type': 'register_ui',
         'capabilities': capabilities,
-        'token': token,
         'device': device,
+        if (token != null) 'token': token,
         if (_sessionId != null) 'session_id': _sessionId,
       };
       _channel!.sink.add(jsonEncode(registerMsg));
@@ -175,6 +178,17 @@ class WebSocketProvider extends ChangeNotifier {
         case 'components_combined':
         case 'components_condensed':
           _handleComponentsMerged(decoded);
+          break;
+        case 'ui_action':
+          _handleUiAction(decoded);
+          break;
+        // Backend informational messages — acknowledged but no UI action needed
+        case 'rote_config':
+        case 'system_config':
+        case 'user_preferences':
+        case 'history_list':
+        case 'chat_status':
+        case 'chat_created':
           break;
         default:
           _logger.d('Unhandled WS message type: $type');
@@ -292,7 +306,7 @@ class WebSocketProvider extends ChangeNotifier {
 
   /// Re-send register_ui with updated device dimensions (e.g. after rotation).
   void reRegister({
-    required String token,
+    String? token,
     required Map<String, dynamic> device,
     required List<String> capabilities,
   }) {
@@ -300,8 +314,8 @@ class WebSocketProvider extends ChangeNotifier {
     _channel!.sink.add(jsonEncode({
       'type': 'register_ui',
       'capabilities': capabilities,
-      'token': token,
       'device': device,
+      if (token != null) 'token': token,
       if (_sessionId != null) 'session_id': _sessionId,
     }));
   }
@@ -373,6 +387,20 @@ class WebSocketProvider extends ChangeNotifier {
     _onThemeReceived = callback;
   }
 
+  // --- UIAction callback (open_url, store_token, clear_token) ---
+
+  void Function(String action, Map<String, dynamic> payload)? _onActionReceived;
+  set onActionReceived(
+      void Function(String action, Map<String, dynamic> payload)? callback) {
+    _onActionReceived = callback;
+  }
+
+  void _handleUiAction(Map<String, dynamic> msg) {
+    final action = msg['action'] as String? ?? '';
+    final payload = msg['payload'] as Map<String, dynamic>? ?? {};
+    _onActionReceived?.call(action, payload);
+  }
+
   // --- Auto-reconnect with exponential backoff (T063/T064) ---
 
   /// Calculate the delay for the current reconnect attempt.
@@ -385,7 +413,7 @@ class WebSocketProvider extends ChangeNotifier {
   /// Start the auto-reconnect timer. Called when connection is lost.
   void _startReconnect() {
     if (!_reconnectEnabled) return;
-    if (_lastToken == null || _lastDevice == null || _lastCapabilities == null) {
+    if (_lastDevice == null || _lastCapabilities == null) {
       return;
     }
 
@@ -396,7 +424,7 @@ class WebSocketProvider extends ChangeNotifier {
     _reconnectTimer = Timer(delay, () {
       _reconnectAttempt++;
       _connectInternal(
-        token: _lastToken!,
+        token: _lastToken,
         device: _lastDevice!,
         capabilities: _lastCapabilities!,
         projectId: _lastProjectId,
@@ -417,7 +445,7 @@ class WebSocketProvider extends ChangeNotifier {
   void disconnect({bool triggeredByUser = false}) {
     _cancelReconnect();
     _subscription?.cancel();
-    _channel?.sink.close(status.goingAway);
+    _channel?.sink.close(status.normalClosure);
     _channel = null;
     _connected = false;
     _hasReceivedRender = false;

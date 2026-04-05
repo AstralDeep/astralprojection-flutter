@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../state/project_provider.dart';
-import '../../state/auth_provider.dart';
+import '../../state/web_socket_provider.dart';
 
 /// Responsive navigation bar for phone/tablet.
 class NavBar extends StatelessWidget {
@@ -12,7 +12,7 @@ class NavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final projectProvider = Provider.of<ProjectProvider>(context);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final wsProvider = Provider.of<WebSocketProvider>(context, listen: false);
     final projectName = projectProvider.currentProject?.name ?? 'No Project';
 
     return AppBar(
@@ -60,14 +60,10 @@ class NavBar extends StatelessWidget {
               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
           onSelected: (value) {
             if (value == 'logout') {
-              authProvider.logout();
+              wsProvider.sendEvent('logout', {});
             }
           },
           itemBuilder: (context) => [
-            PopupMenuItem(
-              value: 'profile',
-              child: Text(authProvider.profile.username ?? 'Profile'),
-            ),
             const PopupMenuItem(
               value: 'logout',
               child: Text('Logout'),

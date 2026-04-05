@@ -1,8 +1,14 @@
-// lib/config.dart
+// lib/config.dart.example
+// Copy this file to config.dart and fill in your values.
+//
+// Flutter connects to the AstralBody backend for all SDUI, auth, and API.
+// All business logic (login, OAuth, routing) lives on the backend —
+// Flutter is a pure SDUI renderer.
 class AppConfig {
-  static const String backendHost = String.fromEnvironment('BACKEND_HOST', defaultValue: '');
-  static const int backendPort = int.fromEnvironment('BACKEND_PORT', defaultValue: );
+  static const String backendHost = '127.0.0.1';
+  static const int backendPort = 8001;
 
   static String get apiBaseUrl => 'http://$backendHost:$backendPort/api';
   static String get wsBaseUrl => 'ws://$backendHost:$backendPort/api/ws';
+  static String get wsUrl => wsBaseUrl;
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../state/project_provider.dart';
-import '../../state/auth_provider.dart';
+import '../../state/token_storage_provider.dart';
 
 class ProjectDropdown extends StatelessWidget {
   const ProjectDropdown({super.key});
@@ -9,12 +9,12 @@ class ProjectDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final projectProvider = Provider.of<ProjectProvider>(context);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final tokenStorage = Provider.of<TokenStorageProvider>(context, listen: false);
     final projects = projectProvider.projects;
     final currentProject = projectProvider.currentProject;
     final isLoading = projectProvider.isLoading;
     final error = projectProvider.error;
-    final token = authProvider.token;
+    final token = tokenStorage.token;
 
     return Column(
       children: [

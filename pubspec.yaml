@@ -26,12 +26,12 @@ dependencies:
   google_fonts: ^6.2.1
   shared_preferences: ^2.5.3
   fl_chart: ^0.70.2
-  flutter_appauth: ^8.0.1
-  flutter_inappwebview: ^6.1.5
   flutter_secure_storage: ^9.2.4
+  url_launcher: ^6.2.0
+  flutter_inappwebview: ^6.1.5
   connectivity_plus: ^6.1.4
   flutter_colorpicker: ^1.1.0
-  record: ^5.1.3              # STT audio recording for voice input (Constitution V)
+  record: ^6.2.0              # STT audio recording for voice input (Constitution V)
   flutter_math_fork: ^0.7.2   # LaTeX math rendering within markdown (Constitution V)
 
 dev_dependencies:

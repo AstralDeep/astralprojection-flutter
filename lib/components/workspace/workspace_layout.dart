@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../dynamic_renderer.dart';
 import '../../state/project_provider.dart';
-import '../../state/auth_provider.dart';
+import '../../state/token_storage_provider.dart';
 import '../../state/web_socket_provider.dart';
 import '../../state/device_profile_provider.dart';
 import '../../state/theme_provider.dart';
@@ -52,11 +52,12 @@ class _WorkspaceLayoutState extends State<WorkspaceLayout> {
   void _loadProjects() {
     final projectProvider =
         Provider.of<ProjectProvider>(context, listen: false);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final tokenStorage =
+        Provider.of<TokenStorageProvider>(context, listen: false);
     if (projectProvider.projects.isEmpty &&
         !projectProvider.isLoading &&
-        authProvider.token != null) {
-      projectProvider.loadProjectsFromBackend(authProvider.token!);
+        tokenStorage.hasToken) {
+      projectProvider.loadProjectsFromBackend(tokenStorage.token!);
     }
   }
 
@@ -126,19 +127,20 @@ class _WorkspaceLayoutState extends State<WorkspaceLayout> {
   void _connectIfNeeded() {
     final projectProvider =
         Provider.of<ProjectProvider>(context, listen: false);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final tokenStorage =
+        Provider.of<TokenStorageProvider>(context, listen: false);
     final wsProvider = Provider.of<WebSocketProvider>(context, listen: false);
     final deviceProfile =
         Provider.of<DeviceProfileProvider>(context, listen: false);
     final hasProject = projectProvider.currentProject != null;
 
-    if (hasProject && authProvider.token != null && !wsProvider.connected) {
+    if (hasProject && !wsProvider.connected) {
       if (!_wsConnectScheduled) {
         _wsConnectScheduled = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _wsConnectScheduled = false;
           wsProvider.connect(
-            token: authProvider.token!,
+            token: tokenStorage.token,
             device: deviceProfile.toDeviceMap(),
             capabilities: supportedCapabilities,
             projectId: projectProvider.currentProject!.id,
@@ -146,11 +148,9 @@ class _WorkspaceLayoutState extends State<WorkspaceLayout> {
         });
       }
     }
-    if (!hasProject && wsProvider.connected) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        wsProvider.disconnect();
-      });
-    }
+    // Don't disconnect the initial WS connection — it receives
+    // the login page and dashboard SDUI from the backend.
+    // Only disconnect when switching away from a project-specific stream.
   }
 
   @override
@@ -161,38 +161,8 @@ class _WorkspaceLayoutState extends State<WorkspaceLayout> {
 
     _connectIfNeeded();
 
-    // No project selected — show project dropdown
-    if (!hasProject) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const ProjectDropdown(),
-            const SizedBox(height: 32),
-            Text(
-              'Select a project to begin.',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontStyle: FontStyle.italic,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Connection error
-    if (!wsProvider.connected && wsProvider.error != null) {
-      return Center(
-        child: Text(
-          'WebSocket error: ${wsProvider.error}',
-          style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.red),
-        ),
-      );
-    }
-
-    // Show SDUI tree (live or cached) with chat input bar at the bottom.
+    // SDUI content from backend takes priority — render login page,
+    // dashboard, or any server-driven UI regardless of project state.
     if (wsProvider.components.isNotEmpty) {
       return Column(
         children: [
@@ -210,6 +180,37 @@ class _WorkspaceLayoutState extends State<WorkspaceLayout> {
           ),
           _buildChatInputBar(),
         ],
+      );
+    }
+
+    // Connection error
+    if (!wsProvider.connected && wsProvider.error != null) {
+      return Center(
+        child: Text(
+          'WebSocket error: ${wsProvider.error}',
+          style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.red),
+        ),
+      );
+    }
+
+    // No SDUI content and no project — show project dropdown
+    if (!hasProject) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const ProjectDropdown(),
+            const SizedBox(height: 32),
+            Text(
+              'Select a project to begin.',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontStyle: FontStyle.italic,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -238,6 +239,7 @@ class _WorkspaceLayoutState extends State<WorkspaceLayout> {
             // Voice mic button — hidden on TV (no microphone)
             if (hasMic)
               IconButton(
+                key: ValueKey('mic_$_isRecording'),
                 icon: Icon(
                   _isRecording ? Icons.mic : Icons.mic_none,
                   color: _isRecording ? Colors.redAccent : null,
@@ -248,6 +250,7 @@ class _WorkspaceLayoutState extends State<WorkspaceLayout> {
             // Speaker toggle — hidden on TV
             if (hasMic)
               IconButton(
+                key: ValueKey('speaker_$_speakerEnabled'),
                 icon: Icon(
                   _speakerEnabled ? Icons.volume_up : Icons.volume_off,
                 ),

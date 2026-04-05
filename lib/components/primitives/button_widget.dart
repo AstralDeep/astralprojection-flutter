@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../state/device_profile_provider.dart';
 import '../../platform/tv/tv_theme.dart';
+import 'form_scope.dart';
 
 /// Renders a clickable button that dispatches a ui_event.
 ///
@@ -53,10 +54,21 @@ class ButtonWidget extends StatelessWidget {
     final componentId = component['id']?.toString();
 
     void onPressed() {
-      sendEvent(action, {
+      final eventPayload = <String, dynamic>{
         ...payload,
         if (componentId != null) 'component_id': componentId,
-      });
+      };
+
+      // When collect_inputs is true, gather values from sibling inputs
+      // registered in the enclosing FormScope.
+      if (payload['collect_inputs'] == true) {
+        final scope = FormScope.of(context);
+        if (scope != null) {
+          eventPayload['fields'] = scope.collectValues();
+        }
+      }
+
+      sendEvent(action, eventPayload);
     }
 
     final button = switch (variant) {

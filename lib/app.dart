@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'components/navigation/nav_bar.dart';
 import 'components/common/loading_overlay.dart';
 import 'components/common/offline_indicator.dart';
-import 'components/auth/login_page.dart';
 import 'components/workspace/workspace_layout.dart';
-import 'state/auth_provider.dart';
+import 'state/token_storage_provider.dart';
 import 'state/project_provider.dart';
 import 'state/web_socket_provider.dart';
 import 'state/device_profile_provider.dart';
@@ -34,7 +34,7 @@ class _AppState extends State<App> {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => TokenStorageProvider()),
         ChangeNotifierProvider(create: (_) => ProjectProvider()),
         ChangeNotifierProvider(create: (_) => WebSocketProvider()),
         ChangeNotifierProvider(create: (_) => DeviceProfileProvider()),
@@ -69,15 +69,76 @@ class _AppShell extends StatefulWidget {
 
 class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
   bool _isControlPanelOpen = false;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Load cached SDUI tree on startup
+
     final ws = Provider.of<WebSocketProvider>(context, listen: false);
+    final tokenStorage =
+        Provider.of<TokenStorageProvider>(context, listen: false);
+
+    // Load cached SDUI tree and tokens on startup
     ws.loadCachedTree();
+    tokenStorage.loadCached().then((_) {
+      _initWebSocket();
+    });
+
+    // Wire ui_action callbacks
+    ws.onActionReceived = _handleUiAction;
   }
+
+  void _initWebSocket() {
+    if (_initialized) return;
+    _initialized = true;
+
+    final ws = Provider.of<WebSocketProvider>(context, listen: false);
+    final dp = Provider.of<DeviceProfileProvider>(context, listen: false);
+    final tokenStorage =
+        Provider.of<TokenStorageProvider>(context, listen: false);
+
+    // Connect immediately — token is optional.
+    // Backend sends SDUI login page if unauthenticated, or dashboard if valid.
+    ws.connect(
+      token: tokenStorage.token,
+      device: dp.toDeviceMap(),
+      capabilities: _sduiCapabilities,
+    );
+  }
+
+  void _handleUiAction(String action, Map<String, dynamic> payload) {
+    final tokenStorage =
+        Provider.of<TokenStorageProvider>(context, listen: false);
+
+    switch (action) {
+      case 'open_url':
+        final url = payload['url'] as String?;
+        if (url != null) {
+          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        }
+        break;
+      case 'store_token':
+        final token = payload['token'] as String? ?? '';
+        final refreshToken = payload['refresh_token'] as String? ?? '';
+        final expiresIn = payload['expires_in'] as int? ?? 300;
+        tokenStorage.store(token, refreshToken, expiresIn);
+        break;
+      case 'clear_token':
+        tokenStorage.clear();
+        break;
+    }
+  }
+
+  /// The SDUI primitive types this client can render.
+  static const _sduiCapabilities = [
+    'container', 'card', 'text', 'button', 'input', 'table', 'list',
+    'alert', 'progress', 'metric', 'code', 'image', 'grid', 'tabs',
+    'divider', 'bar_chart', 'line_chart', 'pie_chart', 'plotly_chart',
+    'collapsible', 'color_picker', 'file_upload', 'file_download',
+    'html_view', 'checkbox', 'stack_layout', 'webview',
+  ];
 
   @override
   void dispose() {
@@ -87,7 +148,6 @@ class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
 
   @override
   void didChangeMetrics() {
-    // Orientation or window resize — update device profile
     _updateDeviceProfile();
   }
 
@@ -104,22 +164,7 @@ class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
       if (mounted) _updateDeviceProfile();
     });
 
-    final auth = Provider.of<AuthProvider>(context);
     final ws = Provider.of<WebSocketProvider>(context);
-
-    if (auth.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (!auth.isAuthenticated) {
-      return Scaffold(
-        body: LoginPage(onLoginSuccess: () => auth.initializeAuth()),
-      );
-    }
-
-    // Authenticated — show workspace with overlays
     final dp = Provider.of<DeviceProfileProvider>(context);
     final isTv = dp.deviceType == 'tv';
 
@@ -127,17 +172,17 @@ class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
       children: [
         WorkspaceLayout(
           projectName:
-              Provider.of<ProjectProvider>(context).currentProject?.name ??
-                  '',
-          wsStatus:
-              Provider.of<ProjectProvider>(context).projectConnectionStatus.name,
+              Provider.of<ProjectProvider>(context).currentProject?.name ?? '',
+          wsStatus: Provider.of<ProjectProvider>(context)
+              .projectConnectionStatus
+              .name,
           hasRootElement: ws.hasReceivedRender || ws.components.isNotEmpty,
         ),
-        // Loading overlay: shown after auth but before first ui_render
+        // Loading overlay: shown while connecting and before first ui_render
         if (ws.connected && !ws.hasReceivedRender && ws.components.isEmpty)
           const LoadingOverlay(),
         // Offline indicator: shown when connection is lost
-        if (!ws.connected && auth.isAuthenticated) const OfflineIndicator(),
+        if (!ws.connected) const OfflineIndicator(),
       ],
     );
 

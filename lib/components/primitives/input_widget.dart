@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../state/device_profile_provider.dart';
 import '../../platform/tv/tv_theme.dart';
+import 'form_scope.dart';
 
 /// Renders a text input field.
 ///
@@ -25,12 +26,31 @@ class InputWidget extends StatefulWidget {
 class _InputWidgetState extends State<InputWidget> {
   late final TextEditingController _controller;
 
+  String _registeredName = '';
+  FormScopeState? _formScope;
+
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(
       text: widget.component['value']?.toString() ?? '',
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final name = widget.component['name']?.toString() ?? '';
+    final scope = FormScope.of(context);
+    // Unregister from old scope if switching
+    if (_formScope != null && _registeredName.isNotEmpty) {
+      _formScope!.unregister(_registeredName);
+    }
+    _formScope = scope;
+    if (scope != null && name.isNotEmpty) {
+      scope.register(name, _controller);
+      _registeredName = name;
+    }
   }
 
   @override
@@ -47,6 +67,9 @@ class _InputWidgetState extends State<InputWidget> {
 
   @override
   void dispose() {
+    if (_formScope != null && _registeredName.isNotEmpty) {
+      _formScope!.unregister(_registeredName);
+    }
     _controller.dispose();
     super.dispose();
   }
@@ -88,9 +111,12 @@ class _InputWidgetState extends State<InputWidget> {
   Widget build(BuildContext context) {
     final placeholder = widget.component['placeholder']?.toString();
     final name = widget.component['name']?.toString() ?? '';
+    final inputType = widget.component['input_type']?.toString() ?? 'text';
+    final isPassword = inputType == 'password';
 
     final textField = TextField(
       controller: _controller,
+      obscureText: isPassword,
       decoration: InputDecoration(
         hintText: placeholder,
         labelText: name.isNotEmpty ? name : null,

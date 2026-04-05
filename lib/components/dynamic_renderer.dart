@@ -27,6 +27,7 @@ import 'primitives/plotly_chart_widget.dart';
 import 'primitives/color_picker_widget.dart';
 import 'primitives/file_upload_widget.dart';
 import 'primitives/file_download_widget.dart';
+import 'primitives/webview_widget.dart';
 
 /// Maps AstralBody backend snake_case component types to Flutter widget builders.
 ///
@@ -61,6 +62,7 @@ final Map<String, PrimitiveBuilder> primitiveMap = {
   'color_picker': (c, s) => ColorPickerWidget(component: c, sendEvent: s),
   'file_upload': (c, s) => FileUploadWidget(component: c, sendEvent: s),
   'file_download': (c, s) => FileDownloadWidget(component: c, sendEvent: s),
+  'webview': (c, s) => WebViewWidget(component: c, sendEvent: s),
 };
 
 /// The list of all supported SDUI component types, sent in register_ui.

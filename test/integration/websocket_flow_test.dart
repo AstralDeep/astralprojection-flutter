@@ -16,7 +16,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:astral/state/web_socket_provider.dart';
-import 'package:astral/state/auth_provider.dart';
+import 'package:astral/state/token_storage_provider.dart';
 import 'package:astral/state/project_provider.dart';
 import 'package:astral/state/device_profile_provider.dart';
 import 'package:astral/state/theme_provider.dart';
@@ -48,8 +48,8 @@ void main() {
         MultiProvider(
           providers: [
             ChangeNotifierProvider<WebSocketProvider>.value(value: wsProvider),
-            ChangeNotifierProvider<AuthProvider>(
-              create: (_) => AuthProvider(),
+            ChangeNotifierProvider<TokenStorageProvider>(
+              create: (_) => TokenStorageProvider(),
             ),
             ChangeNotifierProvider<ProjectProvider>(
               create: (_) => ProjectProvider(),
