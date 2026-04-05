@@ -65,7 +65,7 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
     try {
       final fileConfig = _resolveFileType();
 
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: fileConfig.type,
         allowedExtensions: fileConfig.extensions,
       );

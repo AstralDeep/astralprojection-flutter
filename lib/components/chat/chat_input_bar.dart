@@ -71,7 +71,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
     if (_isPickingFile) return;
     setState(() => _isPickingFile = true);
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv', 'txt', 'json', 'md', 'pdf', 'png', 'jpg'],
       );

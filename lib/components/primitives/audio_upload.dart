@@ -100,7 +100,7 @@ class _AudioUploadWidgetState extends State<AudioUploadWidget> {
 
     try {
       // 2. Pick the file
-      FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.audio);
+      FilePickerResult? result = await FilePicker.pickFiles(type: FileType.audio);
       if (result == null || result.files.single.path == null) {
         setState(() => _isLoading = false);
         return; // User canceled the picker

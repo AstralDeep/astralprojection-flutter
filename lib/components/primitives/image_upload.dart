@@ -69,7 +69,7 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
 
     try {
       // 1. Pick an image file and read its bytes directly.
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.image,
         withData: true,
       );

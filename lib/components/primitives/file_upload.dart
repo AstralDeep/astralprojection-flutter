@@ -34,7 +34,7 @@ class _FileUploadFieldWidgetState extends State<FileUploadFieldWidget> {
     try {
       // 1. Pick the file and read its bytes directly.
       // This works on both web and mobile.
-      final result = await FilePicker.platform.pickFiles(withData: true);
+      final result = await FilePicker.pickFiles(withData: true);
 
       if (result == null) {
         setState(() => _isLoading = false);

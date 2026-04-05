@@ -19,17 +19,17 @@ dependencies:
   http: ^1.4.0
   web_socket_channel: ^3.0.3
   flutter_markdown: ^0.7.7+1
-  file_picker: ^10.2.0
+  file_picker: ^11.0.1
   just_audio: ^0.10.4
   mime: ^2.0.0
   logger: ^2.6.0
   google_fonts: ^6.2.1
   shared_preferences: ^2.5.3
-  fl_chart: ^0.70.2
-  flutter_secure_storage: ^9.2.4
+  fl_chart: ^1.1.0
+  flutter_secure_storage: ^10.0.0
   url_launcher: ^6.2.0
   flutter_inappwebview: ^6.1.5
-  connectivity_plus: ^6.1.4
+  connectivity_plus: ^7.1.0
   flutter_colorpicker: ^1.1.0
   record: ^6.2.0              # STT audio recording for voice input (Constitution V)
   flutter_math_fork: ^0.7.2   # LaTeX math rendering within markdown (Constitution V)
@@ -39,7 +39,7 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
   mockito: ^5.4.5
   build_runner: ^2.4.15
