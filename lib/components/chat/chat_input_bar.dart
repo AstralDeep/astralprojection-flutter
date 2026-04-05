@@ -42,7 +42,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
     final shell = Provider.of<AppShellProvider>(context, listen: false);
     ws.sendEvent('chat_message', {
       'message': text,
-      'chat_id': shell.activeChatId ?? 'default',
+      'chat_id': shell.activeChatId,
     });
     _controller.clear();
     setState(() => _attachedFileName = null);

@@ -216,6 +216,7 @@ class WebSocketProvider extends ChangeNotifier {
         case 'rote_config':
         case 'user_preferences':
         case 'chat_created':
+          _onChatCreated?.call(decoded);
           break;
         default:
           _logger.d('Unhandled WS message type: $type');
@@ -463,6 +464,11 @@ class WebSocketProvider extends ChangeNotifier {
   void Function(Map<String, dynamic>)? _onAgentRegistered;
   set onAgentRegistered(void Function(Map<String, dynamic>)? callback) {
     _onAgentRegistered = callback;
+  }
+
+  void Function(Map<String, dynamic>)? _onChatCreated;
+  set onChatCreated(void Function(Map<String, dynamic>)? callback) {
+    _onChatCreated = callback;
   }
 
   void _handleUiAction(Map<String, dynamic> msg) {

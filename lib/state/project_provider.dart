@@ -61,7 +61,13 @@ class ProjectProvider extends ChangeNotifier {
   }
 
   /// Loads projects from the backend using the provided token.
+  /// Currently a no-op — projects API not yet implemented; chats are standalone.
   Future<void> loadProjectsFromBackend(String token) async {
+    _isLoading = false;
+    _error = null;
+    notifyListeners();
+    return;
+    // ignore: dead_code
     if (_isLoading) return;
     _isLoading = true;
     _error = null;

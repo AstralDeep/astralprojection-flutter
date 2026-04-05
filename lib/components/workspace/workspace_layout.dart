@@ -63,13 +63,21 @@ class _WorkspaceLayoutState extends State<WorkspaceLayout> {
     final ws = Provider.of<WebSocketProvider>(context, listen: false);
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     ws.onThemeReceived = (config) => themeProvider.applyBackendTheme(config);
+    ws.onChatCreated = (msg) {
+      final chatId = msg['payload']?['chat_id'] as String?;
+      if (chatId != null) {
+        Provider.of<AppShellProvider>(context, listen: false)
+            .setActiveChatId(chatId);
+      }
+    };
   }
 
   /// Save a rendered SDUI component to the drawer (T015/T016).
   void _saveComponentToDrawer(
       Map<String, dynamic> component, AppShellProvider shell) {
     final wsProvider = Provider.of<WebSocketProvider>(context, listen: false);
-    final chatId = shell.activeChatId ?? 'default';
+    final chatId = shell.activeChatId;
+    if (chatId == null) return;
     final type = component['type'] as String? ?? 'unknown';
     final title = component['title'] as String? ??
         component['label'] as String? ??
