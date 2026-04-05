@@ -271,7 +271,8 @@ class _AgentPermissionsSheetState extends State<AgentPermissionsSheet> {
                     value: enabled,
                     onChanged: (v) => _toggleScope(scope, v),
                     activeTrackColor: color.withValues(alpha: 0.5),
-                    activeThumbColor: color,
+                    thumbColor: WidgetStateProperty.resolveWith(
+                        (states) => states.contains(WidgetState.selected) ? color : null),
                   ),
                   if (tools.isNotEmpty)
                     Icon(

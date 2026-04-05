@@ -182,12 +182,21 @@ class WebSocketProvider extends ChangeNotifier {
         case 'ui_action':
           _handleUiAction(decoded);
           break;
+        case 'system_config':
+          _onSystemConfig?.call(decoded);
+          break;
+        case 'history_list':
+          _onHistoryList?.call(decoded);
+          break;
+        case 'chat_status':
+          _onChatStatus?.call(decoded);
+          break;
+        case 'agent_registered':
+          _onAgentRegistered?.call(decoded);
+          break;
         // Backend informational messages — acknowledged but no UI action needed
         case 'rote_config':
-        case 'system_config':
         case 'user_preferences':
-        case 'history_list':
-        case 'chat_status':
         case 'chat_created':
           break;
         default:
@@ -393,6 +402,28 @@ class WebSocketProvider extends ChangeNotifier {
   set onActionReceived(
       void Function(String action, Map<String, dynamic> payload)? callback) {
     _onActionReceived = callback;
+  }
+
+  // --- Shell data callbacks (system_config, history_list, chat_status) ---
+
+  void Function(Map<String, dynamic>)? _onSystemConfig;
+  set onSystemConfig(void Function(Map<String, dynamic>)? callback) {
+    _onSystemConfig = callback;
+  }
+
+  void Function(Map<String, dynamic>)? _onHistoryList;
+  set onHistoryList(void Function(Map<String, dynamic>)? callback) {
+    _onHistoryList = callback;
+  }
+
+  void Function(Map<String, dynamic>)? _onChatStatus;
+  set onChatStatus(void Function(Map<String, dynamic>)? callback) {
+    _onChatStatus = callback;
+  }
+
+  void Function(Map<String, dynamic>)? _onAgentRegistered;
+  set onAgentRegistered(void Function(Map<String, dynamic>)? callback) {
+    _onAgentRegistered = callback;
   }
 
   void _handleUiAction(Map<String, dynamic> msg) {

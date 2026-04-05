@@ -4,7 +4,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'components/navigation/nav_bar.dart';
 import 'components/common/loading_overlay.dart';
 import 'components/common/offline_indicator.dart';
+import 'components/sidebar/app_sidebar.dart';
 import 'components/workspace/workspace_layout.dart';
+import 'components/dynamic_renderer.dart';
+import 'state/app_shell_provider.dart';
 import 'state/token_storage_provider.dart';
 import 'state/project_provider.dart';
 import 'state/web_socket_provider.dart';
@@ -22,14 +25,6 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
-  bool isControlPanelOpen = false;
-
-  void handleToggleControlPanel() {
-    setState(() {
-      isControlPanelOpen = !isControlPanelOpen;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -39,6 +34,7 @@ class _AppState extends State<App> {
         ChangeNotifierProvider(create: (_) => WebSocketProvider()),
         ChangeNotifierProvider(create: (_) => DeviceProfileProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AppShellProvider()),
       ],
       child: Consumer2<ThemeProvider, DeviceProfileProvider>(
         builder: (context, themeProvider, deviceProfile, _) {
@@ -68,7 +64,6 @@ class _AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
-  bool _isControlPanelOpen = false;
   bool _initialized = false;
 
   @override
@@ -88,6 +83,19 @@ class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
 
     // Wire ui_action callbacks
     ws.onActionReceived = _handleUiAction;
+
+    // Wire shell data callbacks
+    _wireShellCallbacks();
+  }
+
+  void _wireShellCallbacks() {
+    final ws = Provider.of<WebSocketProvider>(context, listen: false);
+    final shell = Provider.of<AppShellProvider>(context, listen: false);
+
+    ws.onSystemConfig = (msg) => shell.updateFromSystemConfig(msg);
+    ws.onHistoryList = (msg) => shell.updateFromHistoryList(msg);
+    ws.onChatStatus = (msg) => shell.updateChatStatus(msg);
+    ws.onAgentRegistered = (msg) => shell.addOrUpdateAgent(msg);
   }
 
   void _initWebSocket() {
@@ -99,8 +107,6 @@ class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
     final tokenStorage =
         Provider.of<TokenStorageProvider>(context, listen: false);
 
-    // Connect immediately — token is optional.
-    // Backend sends SDUI login page if unauthenticated, or dashboard if valid.
     ws.connect(
       token: tokenStorage.token,
       device: dp.toDeviceMap(),
@@ -131,7 +137,6 @@ class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
     }
   }
 
-  /// The SDUI primitive types this client can render.
   static const _sduiCapabilities = [
     'container', 'card', 'text', 'button', 'input', 'table', 'list',
     'alert', 'progress', 'metric', 'code', 'image', 'grid', 'tabs',
@@ -159,16 +164,20 @@ class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    // Update device profile on each build (captures initial + changes)
+    // Update device profile on each build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _updateDeviceProfile();
     });
 
     final ws = Provider.of<WebSocketProvider>(context);
     final dp = Provider.of<DeviceProfileProvider>(context);
+    final shell = Provider.of<AppShellProvider>(context);
+    final tokenStorage = Provider.of<TokenStorageProvider>(context);
     final isTv = dp.deviceType == 'tv';
+    final isDesktop = dp.isDesktop;
 
-    Widget body = Stack(
+    // Main content area: SDUI workspace + overlays
+    Widget mainContent = Stack(
       children: [
         WorkspaceLayout(
           projectName:
@@ -178,29 +187,80 @@ class _AppShellState extends State<_AppShell> with WidgetsBindingObserver {
               .name,
           hasRootElement: ws.hasReceivedRender || ws.components.isNotEmpty,
         ),
-        // Loading overlay: shown while connecting and before first ui_render
         if (ws.connected && !ws.hasReceivedRender && ws.components.isEmpty)
           const LoadingOverlay(),
-        // Offline indicator: shown when connection is lost
         if (!ws.connected) const OfflineIndicator(),
       ],
     );
 
-    // Wrap body in TV focus manager for D-pad navigation
+    // Wrap in TV focus manager if needed
     if (isTv) {
-      body = TvFocusManager(child: body);
+      mainContent = TvFocusManager(child: mainContent);
+    }
+
+    // Unauthenticated: centered login page without dashboard chrome
+    if (!tokenStorage.hasToken) {
+      return Scaffold(
+        backgroundColor: AstralColors.background,
+        body: Stack(
+          children: [
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final component in ws.components)
+                        DynamicRenderer(component: component),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (ws.connected && !ws.hasReceivedRender && ws.components.isEmpty)
+              const LoadingOverlay(),
+            if (!ws.connected) const OfflineIndicator(),
+          ],
+        ),
+      );
+    }
+
+    // Desktop: sidebar full-height on left, navbar+content on right.
+    // Mobile: navbar on top, drawer for sidebar.
+    if (isDesktop) {
+      return Scaffold(
+        backgroundColor: AstralColors.background,
+        body: Row(
+          children: [
+            // Sidebar spans full screen height
+            AppSidebar(
+              collapsed: !shell.sidebarOpen,
+              onToggle: () => shell.toggleSidebar(),
+            ),
+            // Navbar + content fill the rest
+            Expanded(
+              child: Column(
+                children: [
+                  const NavBar(),
+                  Expanded(child: mainContent),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(56.0),
-        child: NavBar(
-          onToggleControlPanel: () {
-            setState(() => _isControlPanelOpen = !_isControlPanelOpen);
-          },
-        ),
+      backgroundColor: AstralColors.background,
+      appBar: const NavBar(),
+      drawer: Drawer(
+        backgroundColor: AstralColors.surface,
+        child: const AppSidebar(isDrawer: true),
       ),
-      body: body,
+      body: mainContent,
     );
   }
 }

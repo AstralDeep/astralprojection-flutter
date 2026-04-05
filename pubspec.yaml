@@ -49,6 +49,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  assets:
+    - assets/icon/
+
 flutter_launcher_icons:
   android: "launcher_icon" # Or true to generate for both Android and iOS
   ios: true

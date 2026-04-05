@@ -20,14 +20,56 @@ class TextWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final content = component['content']?.toString() ?? '';
     final variant = component['variant']?.toString() ?? 'body';
+    final backendStyle = component['style'] as Map<String, dynamic>? ?? {};
+    final rawColor =
+        component['color']?.toString() ?? backendStyle['color']?.toString();
     final textTheme = Theme.of(context).textTheme;
 
-    final style = switch (variant) {
+    var style = switch (variant) {
       'h1' => textTheme.headlineLarge,
       'h2' => textTheme.headlineMedium,
       'h3' => textTheme.headlineSmall,
-      'caption' => textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+      'caption' => textTheme.bodySmall?.copyWith(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey[400]
+              : Colors.grey[600]),
       _ => textTheme.bodyMedium,
+    };
+
+    // Apply explicit color from backend if provided
+    if (rawColor != null) {
+      final parsed = _parseColor(rawColor);
+      if (parsed != null) {
+        style = style?.copyWith(color: parsed);
+      }
+    }
+
+    // Apply fontSize from backend style
+    final rawFontSize = backendStyle['fontSize']?.toString();
+    if (rawFontSize != null) {
+      final size = double.tryParse(rawFontSize.replaceAll('px', ''));
+      if (size != null) {
+        style = style?.copyWith(fontSize: size);
+      }
+    }
+
+    // Apply fontWeight from backend style
+    final rawFontWeight = backendStyle['fontWeight']?.toString();
+    if (rawFontWeight != null) {
+      final weight = _parseFontWeight(rawFontWeight);
+      if (weight != null) {
+        style = style?.copyWith(fontWeight: weight);
+      }
+    }
+
+    // Parse textAlign from backend style
+    final rawAlign = backendStyle['textAlign']?.toString();
+    final textAlign = switch (rawAlign) {
+      'center' => TextAlign.center,
+      'right' => TextAlign.right,
+      'left' => TextAlign.left,
+      'justify' => TextAlign.justify,
+      _ => null,
     };
 
     // Check if content contains markdown or LaTeX indicators
@@ -68,9 +110,34 @@ class TextWidget extends StatelessWidget {
       label: content,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4.0),
-        child: Text(content, style: style),
+        child: Text(content, style: style, textAlign: textAlign),
       ),
     );
+  }
+
+  /// Parse a CSS font-weight value to Flutter FontWeight.
+  static FontWeight? _parseFontWeight(String raw) {
+    return switch (raw) {
+      '100' => FontWeight.w100,
+      '200' => FontWeight.w200,
+      '300' => FontWeight.w300,
+      '400' || 'normal' => FontWeight.w400,
+      '500' => FontWeight.w500,
+      '600' => FontWeight.w600,
+      '700' || 'bold' => FontWeight.w700,
+      '800' => FontWeight.w800,
+      '900' => FontWeight.w900,
+      _ => null,
+    };
+  }
+
+  /// Parse a hex color string like "#FF0000" or "FF0000".
+  static Color? _parseColor(String raw) {
+    var hex = raw.trim().replaceFirst('#', '');
+    if (hex.length == 6) hex = 'FF$hex';
+    if (hex.length != 8) return null;
+    final value = int.tryParse(hex, radix: 16);
+    return value != null ? Color(value) : null;
   }
 
   /// Build content with inline/block LaTeX math expressions.

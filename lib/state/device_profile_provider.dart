@@ -39,6 +39,10 @@ class DeviceProfileProvider extends ChangeNotifier {
     }
   }
 
+  bool get isDesktop => _deviceType == 'desktop';
+  bool get isMobile => _deviceType == 'mobile';
+  bool get isTablet => _deviceType == 'tablet';
+
   String _detectDeviceType(double viewportWidth) {
     // Platform-based overrides
     if (defaultTargetPlatform == TargetPlatform.iOS ||
@@ -48,10 +52,10 @@ class DeviceProfileProvider extends ChangeNotifier {
       if (viewportWidth <= 480) return 'mobile';
       return 'tablet';
     }
-    // macOS / linux / windows default to browser-like behavior
+    // Desktop platforms (macOS, Windows, Linux)
     if (viewportWidth <= 480) return 'mobile';
-    if (viewportWidth <= 1024) return 'tablet';
-    return 'tv';
+    if (viewportWidth <= 768) return 'tablet';
+    return 'desktop';
   }
 
   String _detectInputModality(String deviceType) {
@@ -60,6 +64,8 @@ class DeviceProfileProvider extends ChangeNotifier {
         return 'dpad';
       case 'watch':
         return 'crown';
+      case 'desktop':
+        return 'pointer';
       default:
         return 'touch';
     }
@@ -75,9 +81,9 @@ class DeviceProfileProvider extends ChangeNotifier {
       'viewport_height': _viewportHeight.round(),
       'pixel_ratio': _pixelRatio,
       'has_touch': _deviceType == 'mobile' || _deviceType == 'tablet',
-      'has_geolocation': _deviceType != 'tv',
+      'has_geolocation': _deviceType != 'tv' && _deviceType != 'desktop',
       'has_microphone': _deviceType != 'tv',
-      'has_camera': _deviceType != 'tv',
+      'has_camera': _deviceType != 'tv' && _deviceType != 'desktop',
       'has_file_system': _deviceType != 'tv' && _deviceType != 'watch',
       'connection_type': 'wifi',
       'user_agent': 'AstralBody-Flutter/1.0',
